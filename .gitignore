@@ -1,0 +1,14 @@
+# --- FRONTEND ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+.DS_Store
+
+# --- BACKEND ---
+backend/venv/
+backend/__pycache__/
+*.pyc
+
+# --- FICHIERS TÉLÉCHARGÉS (On ne veut pas les stocker sur GitHub) ---
+backend/downloads/
