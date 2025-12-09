@@ -10,7 +10,7 @@ Compatible avec YouTube, TikTok, X (Twitter) et plus encore. Sans publicité, sa
 
 - 🚀 **Détection Automatique** : Collez un lien, le site reconnaît la plateforme instantanément.
 - ⚡ **Téléchargements Rapides** : Moteur basé sur `yt-dlp` pour des performances maximales.
-- 🎬 **Multi-Formats** : 
+- 🎬 **Multi-Formats** :
   - Vidéo MP4 (jusqu'à 4K)
   - Audio MP3 (320kbps avec métadonnées)
   - Support des vidéos verticales (TikTok/Shorts)
@@ -29,6 +29,6 @@ Ce projet utilise une architecture moderne :
 Si vous voulez lancer ce projet sur votre machine :
 
 ### 1. Cloner le projet
-```bash
-git clone [https://github.com/Enzowithao/universal-downloader.git](https://github.com/Enzowithao/universal-downloader.git)
-cd universal-downloader
+  ```bash
+  git clone [https://github.com/Enzowithao/universal-downloader.git](https://github.com/Enzowithao/universal-downloader.git)
+  cd universal-downloader
