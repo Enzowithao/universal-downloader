@@ -29,6 +29,44 @@ Ce projet utilise une architecture moderne :
 Si vous voulez lancer ce projet sur votre machine :
 
 ### 1. Cloner le projet
-  ```bash
-  git clone [https://github.com/Enzowithao/universal-downloader.git](https://github.com/Enzowithao/universal-downloader.git)
-  cd universal-downloader
+```bash
+git clone [https://github.com/Enzowithao/universal-downloader.git](https://github.com/Enzowithao/universal-downloader.git)
+cd universal-downloader
+
+2. Lancer le Backend (Python)
+Bash
+
+cd backend
+# Créer un environnement virtuel (recommandé)
+python3 -m venv venv
+source venv/bin/activate
+
+# Installer les dépendances
+pip install fastapi "uvicorn[standard]" yt-dlp
+
+# Lancer le serveur
+mkdir downloads # Important : créer le dossier de stockage temporaire
+uvicorn main:app --reload
+Le backend sera accessible sur http://127.0.0.1:8000
+
+3. Lancer le Frontend (React)
+Ouvrez un nouveau terminal :
+
+Bash
+
+cd frontend
+npm install
+npm run dev
+Ouvrez http://localhost:3000 dans votre navigateur.
+
+Conçu avec ❤️ par Enzo.
+
+
+---
+
+Une fois collé, n'oublie pas d'envoyer la mise à jour sur GitHub :
+
+```bash
+git add .
+git commit -m "Correction du README"
+git push
