@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Download, Music, Video, X, User, Clock, Eye, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Download, Music, Video, X, User, Clock, Eye, Loader2, Pencil, Info } from "lucide-react"; // <-- J'ai ajouté l'icône Info
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 
@@ -29,7 +29,6 @@ const formatViews = (num?: number) => {
   return num.toString();
 };
 
-// --- FONCTION CONFETTIS (Corrigée pour TS) ---
 const fireConfetti = () => {
   const count = 200;
   const defaults = {
@@ -38,7 +37,6 @@ const fireConfetti = () => {
     disableForReducedMotion: true
   };
 
-  // On utilise 'any' pour 'opts' afin d'éviter les erreurs de types stricts ici
   function fire(particleRatio: number, opts: any) {
     confetti(Object.assign({}, defaults, opts, {
       particleCount: Math.floor(count * particleRatio)
@@ -55,25 +53,47 @@ const fireConfetti = () => {
 export default function VideoCard({ data, onReset }: VideoCardProps) {
   const [imgError, setImgError] = useState(false);
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
+  const [customTitle, setCustomTitle] = useState(data.title);
+  const [statusText, setStatusText] = useState<string>("");
+
+  useEffect(() => {
+    setCustomTitle(data.title);
+  }, [data]);
 
   const handleDownload = async (opt: any, index: number) => {
     setDownloadingIndex(index);
+    
+    // Initialisation des messages
+    setStatusText("Connexion au serveur...");
+    const timer1 = setTimeout(() => setStatusText("Téléchargement de la vidéo..."), 1500);
+    const timer2 = setTimeout(() => setStatusText("Incrustation image & métadonnées..."), 4000); // Petit détail pro
+    const timer3 = setTimeout(() => setStatusText("Préparation de l'envoi..."), 9000);
 
     try {
-        const downloadUrl = `http://127.0.0.1:8000/api/download?url=${encodeURIComponent(data.original_url || "")}&type=${opt.type}&quality=${opt.quality}`;
+        const downloadUrl = `http://127.0.0.1:8000/api/download?url=${encodeURIComponent(data.original_url || "")}&type=${opt.type}&quality=${opt.quality}&title=${encodeURIComponent(customTitle)}`;
         
-        // 1. DÉCLENCHEMENT DU TÉLÉCHARGEMENT
+        const response = await fetch(downloadUrl);
+
+        if (!response.ok) {
+            throw new Error("Erreur lors du téléchargement");
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.setAttribute('download', '');
+        link.href = url;
+        const extension = opt.type === 'audio' ? 'mp3' : 'mp4';
+        link.setAttribute('download', `${customTitle}.${extension}`);
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+        
+        link.parentNode?.removeChild(link);
+        window.URL.revokeObjectURL(url);
 
-        // 2. SAUVEGARDE DANS L'HISTORIQUE
+        // Sauvegarde historique
         const historyItem = {
             id: Date.now(),
-            title: data.title,
+            title: customTitle,
             thumbnail: data.thumbnail,
             uploader: data.uploader,
             url: data.original_url || "",
@@ -82,31 +102,36 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
             date: new Date().toLocaleDateString()
         };
 
-        // On précise à TS que c'est un tableau de n'importe quoi (any[]) pour éviter les conflits
         const storedHistory = localStorage.getItem('dl_history');
         const currentHistory: any[] = storedHistory ? JSON.parse(storedHistory) : [];
-        
-        // Filtrage des doublons
         const newHistory = [historyItem, ...currentHistory].filter((item, idx, self) => 
             idx === self.findIndex((t) => (
                 t.title === item.title && t.quality === item.quality
             ))
         ).slice(0, 10);
-        
         localStorage.setItem('dl_history', JSON.stringify(newHistory));
-        
-        // Dispatch de l'événement
         window.dispatchEvent(new Event("historyUpdated"));
 
-        // 3. SUCCÈS
-        toast.success(`Téléchargement ${opt.quality} lancé 🚀`);
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+
+        toast.success(`Téléchargement terminé 🚀`);
+        setStatusText("Terminé !"); 
         fireConfetti();
         
-        setTimeout(() => setDownloadingIndex(null), 4000);
+        setTimeout(() => {
+            setDownloadingIndex(null);
+            setStatusText("");
+        }, 2000);
 
     } catch (error) {
         console.error("Download error", error);
         setDownloadingIndex(null);
+        setStatusText("");
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
         toast.error("Le téléchargement a échoué.");
     }
   };
@@ -122,14 +147,57 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
 
       <div className="relative bg-[#0a0a0a] border border-neutral-800 rounded-[1.8rem] overflow-hidden shadow-2xl flex flex-col md:flex-row">
         
-        {/* GAUCHE */}
-        <div className="md:w-5/12 relative h-64 md:h-auto overflow-hidden">
-          <img src={data.thumbnail} alt={data.title} className="w-full h-full object-cover transform group-hover:scale-105 transition duration-700 ease-in-out"/>
+        {/* GAUCHE : IMAGE AVEC OVERLAY */}
+        <div className="md:w-5/12 relative h-64 md:h-auto overflow-hidden bg-black">
+          <img src={data.thumbnail} alt={data.title} className="w-full h-full object-cover transform group-hover:scale-105 transition duration-700 ease-in-out opacity-80"/>
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-[#0a0a0a]" />
-          <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg">
-            <Clock className="w-3 h-3 text-neutral-300" />
-            {data.duration}
-          </div>
+          
+          <AnimatePresence>
+            {downloadingIndex !== null && (
+                <motion.div 
+                    initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
+                    animate={{ opacity: 1, backdropFilter: "blur(8px)" }}
+                    exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
+                    className="absolute inset-0 z-20 bg-black/60 flex flex-col items-center justify-center text-center p-6"
+                >
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-purple-500 blur-xl opacity-20 animate-pulse"></div>
+                        <Loader2 className="w-10 h-10 text-white animate-spin relative z-10 mb-4" />
+                    </div>
+                    
+                    <motion.p 
+                        key={statusText}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-white font-medium text-base tracking-wide mb-3"
+                    >
+                        {statusText}
+                    </motion.p>
+                    
+                    {/* --- LE MESSAGE D'AVERTISSEMENT ICI --- */}
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.5 }} // Apparaît après 1.5sec
+                        className="flex flex-col items-center gap-1"
+                    >
+                        <div className="h-px w-12 bg-white/20 mb-2"></div>
+                        <p className="text-xs text-neutral-400 font-medium leading-relaxed max-w-[200px]">
+                            Le temps de traitement varie selon la taille du fichier et votre connexion.
+                        </p>
+                    </motion.div>
+                    {/* -------------------------------------- */}
+
+                </motion.div>
+            )}
+          </AnimatePresence>
+
+          {!downloadingIndex && (
+            <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg">
+                <Clock className="w-3 h-3 text-neutral-300" />
+                {data.duration}
+            </div>
+          )}
         </div>
 
         {/* DROITE */}
@@ -139,7 +207,17 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
           </button>
 
           <div className="mb-6 space-y-4">
-            <h2 className="text-2xl md:text-3xl font-bold leading-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-neutral-400 md:pr-10">{data.title}</h2>
+            
+            <div className="relative group/edit">
+                <input 
+                    type="text" 
+                    value={customTitle}
+                    onChange={(e) => setCustomTitle(e.target.value)}
+                    className="w-full bg-transparent text-2xl md:text-3xl font-bold leading-tight text-white border-b border-transparent focus:border-purple-500 outline-none transition-all placeholder-neutral-600 md:pr-10 pb-1"
+                />
+                <Pencil className="absolute top-2 right-2 w-5 h-5 text-neutral-600 opacity-0 group-hover/edit:opacity-100 pointer-events-none transition-opacity" />
+            </div>
+
             <div className="flex flex-wrap items-center gap-3 text-sm font-medium">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-800/50 border border-neutral-700/50 text-neutral-200">
                 {data.avatar && !imgError ? (

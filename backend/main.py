@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import yt_dlp
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 app = FastAPI()
 
@@ -24,13 +24,7 @@ def format_size(bytes_size):
     return f"{round(bytes_size / (1024 * 1024), 1)} MB"
 
 def get_best_size(formats, is_audio=False, limit_res=False):
-    """
-    Cherche la taille du fichier.
-    - limit_res=True : Mode 'Eco' (720p). Doit gérer le Paysage (1280x720) ET le Portrait (720x1280).
-    """
     best_size = 0
-    
-    # CAS AUDIO
     if is_audio:
         for f in formats:
             if f.get('acodec') != 'none' and f.get('vcodec') == 'none':
@@ -39,44 +33,27 @@ def get_best_size(formats, is_audio=False, limit_res=False):
                     best_size = size
         return format_size(best_size) if best_size > 0 else "Estim. ~4 MB"
 
-    # CAS VIDÉO
     video_size = 0
     audio_size = 0
-
-    # 1. On cherche la taille Audio à ajouter
     for f in formats:
         if f.get('acodec') != 'none' and f.get('vcodec') == 'none':
             audio_size = f.get('filesize') or f.get('filesize_approx') or 0
             break
 
-    # 2. On cherche la taille Vidéo
     for f in formats:
-        if f.get('vcodec') == 'none': 
-            continue
-            
+        if f.get('vcodec') == 'none': continue
         size = f.get('filesize') or f.get('filesize_approx') or 0
         height = f.get('height') or 0
         width = f.get('width') or 0
         
-        # CORRECTION ICI : Mode Économique (720p)
         if limit_res:
-            # On rejette SEULEMENT si la hauteur ET la largeur sont TOUTES LES DEUX grandes (>800).
-            # Cela permet de garder les TikToks (720x1280) car 720 < 800.
-            if height > 800 and width > 800:
-                continue
-            
-            if size > video_size:
-                video_size = size
-        
-        # Mode Max (1080p+)
+            if height > 800 and width > 800: continue
+            if size > video_size: video_size = size
         else:
-            if size > video_size:
-                video_size = size
+            if size > video_size: video_size = size
 
     total = video_size + audio_size
-    if total > 0:
-        return format_size(total)
-    
+    if total > 0: return format_size(total)
     return "Estim. ~" + ("45 MB" if limit_res else "120 MB")
 
 def cleanup_file(path: str):
@@ -94,10 +71,16 @@ def read_root():
 
 @app.get("/api/info")
 def get_video_info(url: str):
+    # --- NETTOYAGE DU LIEN (Anti-Playlist) ---
+    if "&list=" in url:
+        url = url.split("&list=")[0]
+    # -----------------------------------------
+
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
         'extract_flat': False,
+        'noplaylist': True,
     }
 
     try:
@@ -129,50 +112,73 @@ def get_video_info(url: str):
 
     except Exception as e:
         print(f"ERREUR INFO: {e}")
-        if "spotify" in url.lower():
-             raise HTTPException(status_code=400, detail="Spotify est protégé par DRM. Support à venir ! 🎵")
         raise HTTPException(status_code=400, detail="Impossible de récupérer la vidéo.")
 
 @app.get("/api/download")
-def download_video(url: str, type: str, quality: str, background_tasks: BackgroundTasks):
+def download_video(url: str, type: str, quality: str, background_tasks: BackgroundTasks, title: str = None):
+    # --- NETTOYAGE DU LIEN (Anti-Playlist) ---
+    if "&list=" in url:
+        url = url.split("&list=")[0]
+    # -----------------------------------------
+
     try:
         filename_id = str(uuid.uuid4())
+        
         ydl_opts = {
             'outtmpl': f'downloads/{filename_id}.%(ext)s',
             'quiet': True,
-            'merge_output_format': 'mp4',
+            'writethumbnail': True,
+            'noplaylist': True,
         }
 
         if type == 'audio':
             ydl_opts.update({
                 'format': 'bestaudio/best',
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
-                }],
+                'postprocessors': [
+                    {
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    },
+                    {
+                        'key': 'FFmpegThumbnailsConvertor', # Convertit WebP -> JPG
+                        'format': 'jpg',
+                    },
+                    {
+                        'key': 'EmbedThumbnail', # AtomicParsley l'utilise ici
+                    },
+                    {
+                        'key': 'FFmpegMetadata',
+                        'add_metadata': True,
+                    },
+                ],
             })
             final_filename = f"downloads/{filename_id}.mp3"
             media_type = "audio/mpeg"
         else: 
-            # LOGIQUE VIDÉO
             if quality == "1080p":
-                # Max Quality : On prend tout
                 ydl_opts['format'] = 'bestvideo+bestaudio/best'
             else:
-                # CORRECTION ICI : Mode "Eco" / 720p
-                # On utilise un '/' pour dire "OU"
-                # 1. Cherche hauteur <= 720 (Paysage classique)
-                # 2. OU cherche largeur <= 720 (Portrait TikTok)
-                # 3. OU prends le meilleur truc <= 720 disponible
                 ydl_opts['format'] = 'bestvideo[height<=720]+bestaudio/bestvideo[width<=720]+bestaudio/best[height<=720]/best[width<=720]'
+            
+            ydl_opts['postprocessors'] = [
+                {'key': 'FFmpegMetadata', 'add_metadata': True},
+                {'key': 'EmbedThumbnail'}
+            ]
+            ydl_opts['merge_output_format'] = 'mp4'
             
             final_filename = f"downloads/{filename_id}.mp4"
             media_type = "video/mp4"
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            clean_title = info.get('title', 'video').replace('/', '_').replace('\\', '_')
+            
+            if title:
+                base_name = unquote(title) 
+            else:
+                base_name = info.get('title', 'video')
+            
+            clean_title = base_name.replace('/', '_').replace('\\', '_').replace(':', '')
             
             if type == 'audio':
                 download_name = f"{clean_title}.mp3"
@@ -191,5 +197,4 @@ def download_video(url: str, type: str, quality: str, background_tasks: Backgrou
 
     except Exception as e:
         print(f"Erreur Download: {e}")
-        # On renvoie l'erreur précise pour comprendre
         raise HTTPException(status_code=400, detail=f"Erreur téléchargement: {str(e)}")
