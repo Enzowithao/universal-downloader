@@ -10,7 +10,7 @@ Compatible avec YouTube, TikTok, X (Twitter) et plus encore. Sans publicité, sa
 
 - 🚀 **Détection Automatique** : Collez un lien, le site reconnaît la plateforme instantanément.
 - ⚡ **Téléchargements Rapides** : Moteur basé sur `yt-dlp` pour des performances maximales.
-- 🎬 **Multi-Formats** : 
+- 🎬 **Multi-Formats** :
   - Vidéo MP4 (jusqu'à 4K)
   - Audio MP3 (320kbps avec métadonnées)
   - Support des vidéos verticales (TikTok/Shorts)
@@ -29,8 +29,43 @@ Ce projet utilise une architecture moderne :
 Si vous voulez lancer ce projet sur votre machine :
 
 ### 1. Cloner le projet
-```bash
-git clone [https://github.com/Enzowithao/universal-downloader.git](https://github.com/Enzowithao/universal-downloader.git)
-cd universal-downloader
 
-## 2. Lancer le Backend (Python)
+```bash
+git clone https://github.com/Enzowithao/universal-downloader.git
+cd universal-downloader
+```
+
+### 2. Lancer le Backend (Python)
+
+```bash
+cd backend
+
+# Créer un environnement virtuel (recommandé)
+python3 -m venv venv
+source venv/bin/activate
+
+# Installer les dépendances
+pip install fastapi "uvicorn[standard]" yt-dlp
+
+# Lancer le serveur
+mkdir downloads # Important : créer le dossier de stockage temporaire
+uvicorn main:app --reload
+```
+
+Le backend sera accessible sur `http://127.0.0.1:8000`
+
+### 3. Lancer le Frontend (React)
+
+Ouvrez un nouveau terminal :
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Ouvrez `http://localhost:3000` dans votre navigateur.
+
+---
+
+Conçu avec ❤️ par **Enzo**.
