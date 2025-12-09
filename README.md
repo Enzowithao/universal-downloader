@@ -30,27 +30,42 @@ Si vous voulez lancer ce projet sur votre machine :
 
 ### 1. Cloner le projet
 
-- Cloner le projet
-  ```bash
-    git clone [https://github.com/Enzowithao/universal-downloader.git](https://github.com/Enzowithao/universal-downloader.git)
-    cd universal-downloader
+```bash
+git clone https://github.com/Enzowithao/universal-downloader.git
+cd universal-downloader
+```
 
-- 2. Lancer le Backend (Python)
+### 2. Lancer le Backend (Python)
 
-  ```bash
-    cd backend
+```bash
+cd backend
 
 # Créer un environnement virtuel (recommandé)
-  
-  ```bash
-    python3 -m venv venv
-    source venv/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 
-
-
-
-
+# Installer les dépendances
+pip install fastapi "uvicorn[standard]" yt-dlp
 
 # Lancer le serveur
 mkdir downloads # Important : créer le dossier de stockage temporaire
 uvicorn main:app --reload
+```
+
+Le backend sera accessible sur `http://127.0.0.1:8000`
+
+### 3. Lancer le Frontend (React)
+
+Ouvrez un nouveau terminal :
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Ouvrez `http://localhost:3000` dans votre navigateur.
+
+---
+
+Conçu avec ❤️ par **Enzo**.
