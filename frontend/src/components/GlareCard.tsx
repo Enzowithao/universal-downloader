@@ -61,7 +61,7 @@ export const GlareCard = ({
     <div
       style={containerStyle}
       // Changement ici: w-full au lieu de w-[320px] pour la responsivité
-      className="relative isolate [contain:layout_style] [perspective:600px] transition-transform duration-[var(--duration)] ease-[var(--easing)] delay-[var(--delay)] will-change-transform w-full aspect-[17/21] md:aspect-[4/3]"
+      className="relative isolate [contain:layout_style] [perspective:600px] transition-transform duration-[var(--duration)] ease-[var(--easing)] delay-[var(--delay)] will-change-transform w-full aspect-[17/21] md:aspect-[9/10]"
       ref={refElement}
       onPointerMove={(event) => {
         const rotateFactor = 0.4;

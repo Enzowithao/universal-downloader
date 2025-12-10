@@ -34,7 +34,6 @@ export default function History({ onSelect }: HistoryProps) {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line
     loadHistory();
     const handleUpdate = () => loadHistory();
     window.addEventListener("historyUpdated", handleUpdate);

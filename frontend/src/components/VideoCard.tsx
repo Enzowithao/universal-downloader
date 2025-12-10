@@ -10,6 +10,7 @@ import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import { timeToSeconds, secondsToTime, calculateCutSize, getPlatformLogo } from "../lib/utils";
 import { VideoData } from "../types";
+import { API_URL } from "../config";
 import ReactPlayerSource from 'react-player';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ReactPlayer = ReactPlayerSource as any;
@@ -61,7 +62,7 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
   const playerRef = useRef<any>(null);
 
   // Détection du format
-  const isVertical = data.is_vertical || false;
+  const isVertical = data.orientation === 'portrait' || (data.orientation === undefined && data.is_vertical);
 
   // Logo de la plateforme
   const platformLogo = getPlatformLogo(data.original_url);
@@ -108,7 +109,7 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
       const start = currentRange[0];
       const end = (currentRange[1] < durationSec) ? currentRange[1] : 0; // 0 veut dire "jusqu'à la fin"
 
-      const prepareUrl = `http://127.0.0.1:8000/api/prepare?url=${encodeURIComponent(data.original_url || "")}&format_id=${encodeURIComponent(formatId)}&title=${encodeURIComponent(customTitle)}&start=${start}&end=${end}`;
+      const prepareUrl = `${API_URL}/api/prepare?url=${encodeURIComponent(data.original_url || "")}&format_id=${encodeURIComponent(formatId)}&title=${encodeURIComponent(customTitle)}&start=${start}&end=${end}`;
 
       const prepareRes = await fetch(prepareUrl, { method: 'POST' });
       if (!prepareRes.ok) throw new Error("Erreur préparation");
@@ -117,7 +118,7 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
       // 2. Boucle de polling pour la progression
       const pollInterval = setInterval(async () => {
         try {
-          const progressRes = await fetch(`http://127.0.0.1:8000/api/progress/${task_id}`);
+          const progressRes = await fetch(`${API_URL}/api/progress/${task_id}`);
           if (progressRes.ok) {
             const task = await progressRes.json();
 
@@ -155,7 +156,7 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
 
   const triggerFileDownload = (taskId: string, fileName: string) => {
     const link = document.createElement('a');
-    link.href = `http://127.0.0.1:8000/api/download/${taskId}`;
+    link.href = `${API_URL}/api/download/${taskId}`;
     link.setAttribute('download', fileName); // Note: le serveur envoie aussi le bon header
     document.body.appendChild(link);
     link.click();
@@ -206,139 +207,154 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
     >
       <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-blue-600 rounded-[2rem] opacity-20 blur-xl group-hover:opacity-40 transition duration-1000"></div>
 
-      <div className={`relative bg-[#0a0a0a] border border-neutral-800 rounded-[1.8rem] overflow-hidden shadow-2xl flex flex-col ${isVertical ? 'md:flex-row' : 'md:flex-col'}`}>
+      <div className={`relative bg-[#0a0a0a] border border-neutral-800 rounded-[1.8rem] overflow-hidden shadow-2xl flex flex-col ${isVertical ? 'md:flex-row md:items-stretch' : 'md:flex-col'}`}>
 
         {/* --- ZONE DU LECTEUR VIDÉO --- */}
         <div
           className={`relative bg-black group-video transition-all duration-500 ease-in-out ${isVertical ? 'md:w-5/12' : 'w-full'}`}
-          style={{ aspectRatio: isVertical ? '9/16' : '16/9' }}
+          style={{
+            aspectRatio:
+              (!isVertical) ? '16/9' : undefined, // Let flex handle height for vertical in side-by-side
+            height: isVertical ? 'auto' : undefined // Fill height in flex row
+          }}
         >
-          {isMounted && (
-            <div className="absolute inset-0 w-full h-full bg-black">
+          {/* Wrapper to enforce ratio inside the flex item if needed, but 'auto' height is better for side-by-side match */}
+          <div className="w-full h-full relative" style={{ aspectRatio: isVertical ? (data.orientation === 'square' ? '1/1' : '9/16') : '16/9' }}>
+            {isMounted && (
+              <div className="absolute inset-0 w-full h-full bg-black">
 
-              {/*
+                {/*
                    FIX UPDATE: On garde l'overlay TOUJOURS dans le DOM mais on joue sur l'opacité.
                    Cela évite que le DOM change brutalement au moment où le play() est lancé,
                    ce qui causait l'erreur "Runtime AbortError: media removed from document".
                 */}
-              <div
-                className={`absolute inset-0 z-10 flex items-center justify-center bg-black transition-opacity duration-500 ${hasStarted && !playerError ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-              >
-                {/* GESTION D'ERREUR DE LECTURE */}
-                {playerError ? (
-                  <div className="text-center p-6 bg-neutral-900/90 rounded-2xl border border-neutral-800 shadow-2xl max-w-[80%]">
-                    <AlertTriangle className="w-10 h-10 text-yellow-500 mx-auto mb-3" />
-                    <h3 className="text-white font-bold text-lg mb-1">Lecture impossible</h3>
-                    <p className="text-neutral-400 text-sm mb-4">Cette vidéo ne peut pas être lue ici (restrictions de l&apos;auteur).</p>
-                    <a
-                      href={data.original_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-semibold rounded-full text-sm hover:bg-neutral-200 transition"
-                    >
-                      Ouvrir sur le site <Video className="w-4 h-4" />
-                    </a>
-                  </div>
-                ) : (
-                  <>
-                    {/* 1. Essayer d'afficher la thumbnail de la vidéo */}
-                    {data.thumbnail && !thumbnailError ? (
-                      <>
-                        <img
-                          src={data.thumbnail}
-                          alt={data.title}
-                          className="w-full h-full object-cover opacity-90"
-                          onError={() => setThumbnailError(true)}
-                        />
-                        {/* Petit gradient pour lisibilité */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                      </>
-                    ) : (
-                      /* 2. Fallback : Logo de la plateforme si pas de thumbnail */
-                      platformLogo && (
-                        <div className="relative flex items-center justify-center w-full h-full p-8">
+                <div
+                  className={`absolute inset-0 z-10 flex items-center justify-center bg-black transition-opacity duration-500 ${hasStarted && !playerError ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                >
+                  {/* GESTION D'ERREUR DE LECTURE */}
+                  {playerError ? (
+                    <div className="text-center p-6 bg-neutral-900/90 rounded-2xl border border-neutral-800 shadow-2xl max-w-[80%]">
+                      <AlertTriangle className="w-10 h-10 text-yellow-500 mx-auto mb-3" />
+                      <h3 className="text-white font-bold text-lg mb-1">Lecture impossible</h3>
+                      <p className="text-neutral-400 text-sm mb-4">Cette vidéo ne peut pas être lue ici (restrictions de l&apos;auteur).</p>
+                      <a
+                        href={data.original_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-semibold rounded-full text-sm hover:bg-neutral-200 transition"
+                      >
+                        Ouvrir sur le site <Video className="w-4 h-4" />
+                      </a>
+                    </div>
+                  ) : (
+                    <>
+                      {/* 1. Essayer d'afficher la thumbnail de la vidéo */}
+                      {data.thumbnail && !thumbnailError ? (
+                        <>
+                          <img
+                            src={
+                              // Si c'est Instagram, on passe DIRECTEMENT par le proxy pour éviter le 403
+                              (data.original_url?.includes('instagram.com') || data.original_url?.includes('tiktok.com'))
+                                ? `${API_URL}/api/proxy_image?url=${encodeURIComponent(data.thumbnail)}`
+                                : data.thumbnail
+                            }
+                            alt={data.title}
+                            className="w-full h-full object-cover opacity-90"
+                            onError={(e) => {
+                              // Si le chargement échoue, on masque
+                              setThumbnailError(true);
+                            }}
+                          />
+                          {/* Petit gradient pour lisibilité */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                        </>
+                      ) : (
+                        /* 2. Fallback : Logo de la plateforme si pas de thumbnail */
+                        platformLogo && (
+                          <div className="relative flex items-center justify-center w-full h-full p-8">
+                            <img
+                              src={platformLogo}
+                              alt="Platform logo"
+                              className="w-full h-full object-contain opacity-80 drop-shadow-2xl"
+                              onError={() => { }}
+                            />
+                          </div>
+                        )
+                      )}
+
+                      {/* LOGO DE LA PLATEFORME (en haut à droite) */}
+                      {platformLogo && (
+                        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg p-2 shadow-lg pointer-events-none z-30">
                           <img
                             src={platformLogo}
                             alt="Platform logo"
-                            className="w-full h-full object-contain opacity-80 drop-shadow-2xl"
+                            className="w-8 h-8 object-contain"
                             onError={() => { }}
                           />
                         </div>
-                      )
-                    )}
+                      )}
+                    </>
+                  )}
+                </div>
 
-                    {/* LOGO DE LA PLATEFORME (en haut à droite) */}
-                    {platformLogo && (
-                      <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg p-2 shadow-lg pointer-events-none z-30">
-                        <img
-                          src={platformLogo}
-                          alt="Platform logo"
-                          className="w-8 h-8 object-contain"
-                          onError={() => { }}
-                        />
-                      </div>
-                    )}
-                  </>
+                {!playerError && (
+                  <ReactPlayer
+                    ref={playerRef}
+                    key={data.original_url} // Reset si l'URL change
+                    url={
+                      // Si c'est YouTube, on utilise l'URL normale (iframe stable)
+                      // Sinon (TikTok, X...), on passe par notre proxy backend pour éviter les blocages
+                      (data.original_url?.includes('youtube.com') || data.original_url?.includes('youtu.be'))
+                        ? data.original_url
+                        : `http://localhost:8000/api/stream?url=${encodeURIComponent(data.original_url || "")}`
+                    }
+                    width="100%"
+                    height="100%"
+                    controls={true}
+                    playsinline={true}
+
+                    // Pas de mode light, on gère nous-mêmes l'affichage
+                    playing={hasStarted}
+
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    config={playerConfig as any}
+
+                    // Quand la vidéo commence
+                    onStart={() => setHasStarted(true)}
+                    onPlay={() => setHasStarted(true)}
+
+                    // Gestion d'erreur
+                    onError={(e: unknown) => {
+                      console.error("Erreur lecture:", e);
+                      setPlayerError(true);
+                      setHasStarted(false);
+                    }}
+
+                    // FIX: On garde l'opacité à 1 pour éviter que le navigateur ne "détache" le média (AbortError)
+                    style={{ position: 'absolute', top: 0, left: 0, zIndex: hasStarted ? 20 : 0, opacity: 1 }}
+                  />
+                )}
+
+                {/* DURÉE (S'affiche tant que la vidéo n'a pas commencé et pas d'erreur) */}
+                {!hasStarted && !playerError && (
+                  <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg pointer-events-none z-30">
+                    <Clock className="w-3 h-3 text-neutral-300" />
+                    {data.duration}
+                  </div>
                 )}
               </div>
-
-              {!playerError && (
-                <ReactPlayer
-                  ref={playerRef}
-                  key={data.original_url} // Reset si l'URL change
-                  url={
-                    // Si c'est YouTube, on utilise l'URL normale (iframe stable)
-                    // Sinon (TikTok, X...), on passe par notre proxy backend pour éviter les blocages
-                    (data.original_url?.includes('youtube.com') || data.original_url?.includes('youtu.be'))
-                      ? data.original_url
-                      : `http://localhost:8000/api/stream?url=${encodeURIComponent(data.original_url || "")}`
-                  }
-                  width="100%"
-                  height="100%"
-                  controls={true}
-                  playsinline={true}
-
-                  // Pas de mode light, on gère nous-mêmes l'affichage
-                  playing={hasStarted}
-
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  config={playerConfig as any}
-
-                  // Quand la vidéo commence
-                  onStart={() => setHasStarted(true)}
-                  onPlay={() => setHasStarted(true)}
-
-                  // Gestion d'erreur
-                  onError={(e: unknown) => {
-                    console.error("Erreur lecture:", e);
-                    setPlayerError(true);
-                    setHasStarted(false);
-                  }}
-
-                  // FIX: On garde l'opacité à 1 pour éviter que le navigateur ne "détache" le média (AbortError)
-                  style={{ position: 'absolute', top: 0, left: 0, zIndex: hasStarted ? 20 : 0, opacity: 1 }}
-                />
-              )}
-
-              {/* DURÉE (S'affiche tant que la vidéo n'a pas commencé et pas d'erreur) */}
-              {!hasStarted && !playerError && (
-                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg pointer-events-none z-30">
-                  <Clock className="w-3 h-3 text-neutral-300" />
-                  {data.duration}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Overlay de téléchargement */}
-          <AnimatePresence>
-            {downloadingIndex !== null && (
-              <motion.div initial={{ opacity: 0, backdropFilter: "blur(0px)" }} animate={{ opacity: 1, backdropFilter: "blur(12px)" }} className="absolute inset-0 z-30 bg-black/80 flex flex-col items-center justify-center text-center p-6">
-                <Loader2 className="w-10 h-10 text-white animate-spin mb-4" />
-                <motion.p key={statusText} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-white font-medium text-base mb-3">{statusText}</motion.p>
-              </motion.div>
             )}
-          </AnimatePresence>
+
+            {/* Overlay de téléchargement */}
+            <AnimatePresence>
+              {downloadingIndex !== null && (
+                <motion.div initial={{ opacity: 0, backdropFilter: "blur(0px)" }} animate={{ opacity: 1, backdropFilter: "blur(12px)" }} className="absolute inset-0 z-30 bg-black/80 flex flex-col items-center justify-center text-center p-6">
+                  <Loader2 className="w-10 h-10 text-white animate-spin mb-4" />
+                  <motion.p key={statusText} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-white font-medium text-base mb-3">{statusText}</motion.p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* --- ZONE D'INFORMATIONS --- */}
@@ -350,8 +366,13 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
             <div className="relative group/edit">
               <div className="text-xs font-mono mb-2 p-2 bg-neutral-900/50 rounded-lg inline-block border border-neutral-700 shadow-sm">
                 <span className="text-neutral-400 font-semibold tracking-wider">FORMAT DÉTECTÉ: </span>
-                <span className={isVertical ? "text-blue-400 font-bold" : "text-green-400 font-bold"}>
-                  {isVertical ? "📱 VERTICAL (9:16)" : "💻 HORIZONTAL (16:9)"}
+                <span className={`font-bold ${data.orientation === 'portrait' ? "text-blue-400" :
+                  data.orientation === 'square' ? "text-purple-400" :
+                    "text-green-400"
+                  }`}>
+                  {data.orientation === 'portrait' ? "📱 VERTICAL (9:16)" :
+                    data.orientation === 'square' ? "⬜ CARRÉ (1:1)" :
+                      "💻 HORIZONTAL (16:9)"}
                 </span>
               </div>
 

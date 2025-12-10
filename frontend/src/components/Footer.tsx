@@ -8,7 +8,7 @@ interface FooterProps {
 
 export default function Footer({ status }: FooterProps) {
   return (
-    <footer className="fixed bottom-0 left-0 w-full p-4 border-t border-neutral-800/50 bg-neutral-950/80 backdrop-blur-md flex items-center justify-between text-xs font-mono text-neutral-500 z-50">
+    <footer className="fixed bottom-0 left-0 w-full p-4 border-t border-neutral-800/50 bg-neutral-950/80 backdrop-blur-md flex items-center justify-between text-xs font-mono text-neutral-500 z-10">
 
       {/* GAUCHE : Statut du serveur */}
       <div className="flex items-center gap-2">
