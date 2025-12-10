@@ -9,7 +9,7 @@ import confetti from "canvas-confetti";
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import { timeToSeconds, secondsToTime, calculateCutSize, getPlatformLogo } from "../lib/utils";
-import { VideoData, DownloadOption } from "../types";
+import { VideoData } from "../types";
 import ReactPlayerSource from 'react-player';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ReactPlayer = ReactPlayerSource as any;
@@ -98,48 +98,76 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
     };
   }, []);
 
-  const handleDownload = async (opt: DownloadOption, index: number) => {
+  const handleDownload = async (formatId: string, label: string, index: number) => {
     setDownloadingIndex(index);
-    setStatusText("Connexion au serveur...");
-    const timer1 = setTimeout(() => setStatusText("Téléchargement..."), 1500);
-    const timer2 = setTimeout(() => setStatusText("Traitement..."), 4000);
-    const timer3 = setTimeout(() => setStatusText("Finalisation..."), 9000);
+    setStatusText("Préparation...");
 
     try {
-      let downloadUrl = `http://127.0.0.1:8000/api/download?url=${encodeURIComponent(data.original_url || "")}&type=${opt.type}&quality=${opt.quality}&title=${encodeURIComponent(customTitle)}`;
-
+      // 1. Démarrer la préparation sur le serveur
       const currentRange = Array.isArray(range) ? range : [0, durationSec];
-      if (currentRange[0] > 0 || currentRange[1] < durationSec) {
-        downloadUrl += `&start=${currentRange[0]}&end=${currentRange[1]}`;
-      }
+      const start = currentRange[0];
+      const end = (currentRange[1] < durationSec) ? currentRange[1] : 0; // 0 veut dire "jusqu'à la fin"
 
-      const response = await fetch(downloadUrl);
-      if (!response.ok) throw new Error("Erreur");
+      const prepareUrl = `http://127.0.0.1:8000/api/prepare?url=${encodeURIComponent(data.original_url || "")}&format_id=${encodeURIComponent(formatId)}&title=${encodeURIComponent(customTitle)}&start=${start}&end=${end}`;
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      const extension = opt.type === 'audio' ? 'mp3' : 'mp4';
-      link.setAttribute('download', `${customTitle}.${extension}`);
-      document.body.appendChild(link);
-      link.click();
+      const prepareRes = await fetch(prepareUrl, { method: 'POST' });
+      if (!prepareRes.ok) throw new Error("Erreur préparation");
+      const { task_id } = await prepareRes.json();
 
-      link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      // 2. Boucle de polling pour la progression
+      const pollInterval = setInterval(async () => {
+        try {
+          const progressRes = await fetch(`http://127.0.0.1:8000/api/progress/${task_id}`);
+          if (progressRes.ok) {
+            const task = await progressRes.json();
 
-      clearTimeout(timer1); clearTimeout(timer2); clearTimeout(timer3);
-      toast.success(`Terminé ! 🚀`);
-      setStatusText("Terminé !");
-      fireConfetti();
+            if (task.status === 'downloading') {
+              setStatusText(`Téléchargement... ${task.progress.toFixed(1)}%`);
+            } else if (task.status === 'processing') {
+              setStatusText("Traitement final...");
+            } else if (task.status === 'finished') {
+              clearInterval(pollInterval);
+              setStatusText("Terminé !");
+              setHasStarted(false); // Réafficher la thumbnail pour éviter l'écran gris
+              setTimeout(() => setDownloadingIndex(null), 2000); // Masquer l'overlay de chargement après 2s
 
-      setTimeout(() => { setDownloadingIndex(null); setStatusText(""); }, 2000);
+              // 3. Déclencher le téléchargement du fichier final
+              triggerFileDownload(task_id, task.title || customTitle);
+            } else if (task.status === 'error') {
+              clearInterval(pollInterval);
+              throw new Error(task.error || "Erreur inconnue");
+            }
+          }
+        } catch (e) {
+          console.error(e);
+          clearInterval(pollInterval);
+          setDownloadingIndex(null);
+          toast.error("Erreur de suivi progression");
+        }
+      }, 500);
 
-    } catch {
+    } catch (e) {
       setDownloadingIndex(null);
-      clearTimeout(timer1); clearTimeout(timer2); clearTimeout(timer3);
-      toast.error("Erreur de téléchargement.");
+      console.error(e);
+      toast.error("Erreur de démarrage");
     }
+  };
+
+  const triggerFileDownload = (taskId: string, fileName: string) => {
+    const link = document.createElement('a');
+    link.href = `http://127.0.0.1:8000/api/download/${taskId}`;
+    link.setAttribute('download', fileName); // Note: le serveur envoie aussi le bon header
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode?.removeChild(link);
+
+    fireConfetti();
+    toast.success(`Terminé ! 🚀`);
+
+    setTimeout(() => {
+      setDownloadingIndex(null);
+      setStatusText("");
+    }, 2000);
   };
 
   const getRangeValues = () => Array.isArray(range) ? range : [0, 0];
@@ -379,18 +407,20 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
             </div>
 
             <div className="grid grid-cols-1 gap-2">
-              {data.options.map((opt, i) => {
+              {data.formats.map((fmt, i) => {
                 const currentVals = getRangeValues();
-                const displaySize = isTrimming ? calculateCutSize(opt.size, durationSec, currentVals[1] - currentVals[0]) : opt.size;
+                const displaySize = isTrimming ? calculateCutSize(fmt.size, durationSec, currentVals[1] - currentVals[0]) : fmt.size;
+                const isAudio = fmt.ext === 'mp3' || fmt.label.toLowerCase().includes('audio');
+
                 return (
-                  <button key={i} onClick={() => handleDownload(opt, i)} disabled={downloadingIndex !== null} className="group cursor-pointer relative overflow-hidden flex items-center justify-between p-3 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-neutral-600 hover:bg-neutral-800 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-wait">
+                  <button key={i} onClick={() => handleDownload(fmt.id, fmt.label, i)} disabled={downloadingIndex !== null} className="group cursor-pointer relative overflow-hidden flex items-center justify-between p-3 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-neutral-600 hover:bg-neutral-800 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-wait">
                     <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition duration-500" />
                     <div className="flex items-center gap-4 relative z-10">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center border border-white/5 ${opt.type === 'video' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
-                        {opt.type === 'video' ? <Video className="w-5 h-5" /> : <Music className="w-5 h-5" />}
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center border border-white/5 ${!isAudio ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                        {!isAudio ? <Video className="w-5 h-5" /> : <Music className="w-5 h-5" />}
                       </div>
                       <div className="text-left">
-                        <div className="text-white font-semibold text-sm flex items-center gap-2">{opt.quality} <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-700 text-neutral-300 font-mono">{opt.ext.toUpperCase()}</span></div>
+                        <div className="text-white font-semibold text-sm flex items-center gap-2">{fmt.label} <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-700 text-neutral-300 font-mono">{fmt.ext.toUpperCase()}</span></div>
                         <div className={`text-xs mt-0.5 transition-colors ${isTrimming ? "text-green-400 font-medium" : "text-neutral-500"}`}>{displaySize}</div>
                       </div>
                     </div>

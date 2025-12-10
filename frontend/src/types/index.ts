@@ -1,21 +1,22 @@
-export interface DownloadOption {
-    type: string;
-    quality: string;
+export interface VideoFormat {
+    id: string;
+    height: number;
+    label: string;
     ext: string;
     size: string;
 }
 
 export interface VideoData {
     title: string;
-    thumbnail: string;
     uploader: string;
-    avatar?: string | null;
+    avatar?: string;
     duration: string;
-    views?: number;
-    original_url?: string;
-    playable_url?: string; // URL directe pour le player
-    is_vertical?: boolean; // <--- CETTE LIGNE EST INDISPENSABLE
-    options: DownloadOption[];
+    thumbnail: string;
+    views: number;
+    original_url: string;
+    playable_url?: string;
+    is_vertical?: boolean;
+    formats: VideoFormat[];
 }
 
 export interface HistoryItem {
