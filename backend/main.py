@@ -1,4 +1,7 @@
 import os
+import time
+import uuid
+import threading
 import yt_dlp
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -415,7 +418,7 @@ def background_download(task_id: str, url: str, format_id: str, custom_title: st
         task['error'] = str(e)
 
 
-import time
+
 
 @app.post("/api/prepare")
 async def prepare_download(url: str, format_id: str, title: str, start: int = 0, end: int = 0):

@@ -10,7 +10,11 @@ export const metadata: Metadata = {
   title: "Universal Downloader - MP4 & MP3",
   description: "Télécharge tes vidéos préférées depuis YouTube, TikTok, X et plus.",
   icons: {
-    icon: "/logo.svg", // <-- On pointe vers notre nouveau fichier
+    icon: "/logo.svg",
+  },
+  robots: {
+    index: false,
+    follow: false,
   },
 };
 
@@ -24,7 +28,7 @@ export default function RootLayout({
       <body className={inter.className}>
         {children}
         {/* 2. ON AJOUTE LE COMPOSANT TOASTER ICI */}
-        <Toaster position="bottom-center" theme="dark" /> 
+        <Toaster position="bottom-center" theme="dark" />
       </body>
     </html>
   );

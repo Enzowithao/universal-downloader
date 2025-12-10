@@ -1,14 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Youtube, Instagram, X as XIcon, Music2 } from "lucide-react";
 
 export default function BackgroundElements() {
     const icons = [
-        { Icon: Youtube, color: "text-red-500", delay: 0, x: "10%", y: "20%" },
-        { Icon: Instagram, color: "text-pink-500", delay: 1, x: "85%", y: "15%" },
-        { Icon: Music2, color: "text-purple-400", delay: 2, x: "15%", y: "70%" }, // TikTok vibe / Generic Audio
-        { Icon: XIcon, color: "text-white", delay: 3, x: "80%", y: "65%" },
+        { src: "/Logos/Youtube_logo.png", delay: 0, x: "10%", y: "20%" },
+        { src: "/Logos/instagram.png", delay: 1, x: "85%", y: "15%" },
+        { src: "/Logos/tiktok.png", delay: 2, x: "15%", y: "70%" },
+        { src: "/Logos/X-Logo.png", delay: 3, x: "80%", y: "65%" },
     ];
 
     return (
@@ -44,11 +43,11 @@ export default function BackgroundElements() {
             {icons.map((item, i) => (
                 <motion.div
                     key={i}
-                    className={`absolute ${item.color} opacity-60`}
+                    className="absolute opacity-50"
                     style={{ left: item.x, top: item.y }}
                     animate={{
                         y: [0, -30, 0],
-                        rotate: [0, 15, -15, 0],
+                        rotate: [0, 10, -10, 0],
                         scale: [1, 1.1, 1]
                     }}
                     transition={{
@@ -58,7 +57,12 @@ export default function BackgroundElements() {
                         delay: item.delay
                     }}
                 >
-                    <item.Icon size={56} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src={item.src}
+                        alt="Social Logo"
+                        className="w-16 h-16 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                    />
                 </motion.div>
             ))}
 
