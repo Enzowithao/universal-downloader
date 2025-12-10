@@ -1,38 +1,35 @@
-# 🎥 Universal Downloader
+# 🎥 Universal Downloader (v3.5)
 
 **L'outil ultime pour télécharger vos contenus préférés en haute qualité.**
-Compatible avec YouTube, TikTok, X (Twitter) et plus encore. Sans publicité, sans limite, 100% gratuit.
+Compatible avec YouTube, TikTok, X (Twitter) et Instagram. Sans publicité, sans limite, 100% gratuit, et maintenant **ultra-sécurisé**.
 
-![Aperçu du projet](https://via.placeholder.com/800x400?text=Universal+Downloader+Preview)
-*(Tu pourras remplacer ce lien par une capture d'écran de ton site plus tard !)*
+![Aperçu du projet](https://via.placeholder.com/800x400?text=Universal+Downloader+v3.5)
 
-## ✨ Fonctionnalités (v1.5)
+## ✨ Nouveautés v3.5 (VPS Ready)
+
+- 🔒 **Accès Sécurisé** : Protection complète du site par mot de passe administrateur.
+- 🕵️ **Mode Furtif** : Configuration SEO (robots.txt, meta tags) pour empêcher l'indexation par Google.
+- 🚀 **VPS Ready** : Fichiers de configuration PM2 et Nginx inclus pour un déploiement professionnel.
+- 🎨 **Interface Épurée** : Suppression des références Spotify, intégration des vrais logos sociaux.
+- 🛠️ **Correctifs** : Résolution des bugs de playlists et du support Instagram/TikTok.
+
+## 🌟 Fonctionnalités Principales
 
 - 🚀 **Détection Automatique** : Collez un lien, le site reconnaît la plateforme instantanément.
-- ✏️ **Édition de Titre** : Renommez vos fichiers avant le téléchargement pour une bibliothèque propre.
-- 🎵 **Mode Audiophile** :
-  - Conversion MP3 haute qualité (320kbps).
-  - **Incrustation automatique de la pochette (Cover Art)** et des métadonnées.
-- 🎬 **Vidéo HD** : Support MP4 jusqu'à 4K et gestion des formats verticaux (Shorts/TikTok).
-- 🎨 **Expérience Utilisateur** :
-  - Feedback visuel en temps réel (téléchargement, conversion, envoi).
-  - Design sombre, animations fluides et confettis de célébration 🎉.
-  - Historique local sauvegardé.
+- ✏️ **Édition de Titre** : Renommez vos fichiers avant le téléchargement.
+- 🎵 **Mode Audiophile** : Conversion MP3 320kbps avec incrustation automatique de la pochette.
+- 🎬 **Vidéo HD** : Support MP4 jusqu'à 4K et gestion des formats verticaux.
+- ⚡ **Batch Download** : Téléchargement de playlists complètes.
 
 ## 🛠️ Stack Technique
 
-- **Frontend** : Next.js 14, Tailwind CSS, Framer Motion, Sonner.
-- **Backend** : FastAPI (Python), yt-dlp, FFmpeg, AtomicParsley.
+- **Frontend** : Next.js 14, Tailwind CSS, Framer Motion.
+- **Backend** : FastAPI (Python), yt-dlp, FFmpeg.
+- **Sécurité** : Middleware Next.js, Auth par Cookie HttpOnly.
 
 ## 📦 Installation & Lancement
 
-Pré-requis système (pour Linux/Ubuntu) :
-Ce projet nécessite FFmpeg (traitement vidéo), Node.js (décryptage YouTube) et AtomicParsley (métadonnées MP3).
-
-```bash
-sudo apt update
-sudo apt install ffmpeg nodejs atomicparsley
-```
+Pré-requis : `FFmpeg`, `Node.js`, `Python 3.10+`.
 
 ### 1. Cloner le projet
 
@@ -41,28 +38,25 @@ git clone https://github.com/Enzowithao/universal-downloader.git
 cd universal-downloader
 ```
 
-### 2. Lancer le Backend (Python)
+### 2. Configuration Sécurité
+
+Créez un fichier `.env` dans le dossier `universal-downloader/frontend` :
+
+```env
+APP_PASSWORD=VotreMotDePasseSuperSecret
+```
+
+### 3. Lancer le Backend
 
 ```bash
 cd backend
-
-# Créer un environnement virtuel (recommandé)
 python3 -m venv venv
 source venv/bin/activate
-
-# Installer les dépendances
-pip install fastapi "uvicorn[standard]" yt-dlp
-
-# Lancer le serveur
-mkdir downloads # Important : créer le dossier de stockage temporaire
+pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-Le backend sera accessible sur `http://127.0.0.1:8000`
-
-### 3. Lancer le Frontend (React)
-
-Ouvrez un nouveau terminal :
+### 4. Lancer le Frontend
 
 ```bash
 cd frontend
@@ -70,7 +64,15 @@ npm install
 npm run dev
 ```
 
-Ouvrez `http://localhost:3000` dans votre navigateur.
+L'application sera accessible sur `http://localhost:3000`.
+
+## ☁️ Déploiement VPS (Production)
+
+Le projet inclut une configuration prête à l'emploi pour PM2 et Nginx.
+
+1.  **PM2** : Utilisez `ecosystem.config.js` à la racine pour lancer les deux services (Frontend + Backend) simultanément.
+2.  **Nginx** : Utilisez le modèle `nginx.conf` pour configurer votre Reverse Proxy et sécuriser les ports.
+3.  **Variable Admin** : Assurez-vous que `APP_PASSWORD` est défini dans `ecosystem.config.js` lors du déploiement.
 
 ---
 
