@@ -30,7 +30,7 @@ export const GlareCard = ({
     "--radius": "24px", // J'ai réduit un peu le rayon pour faire plus clean
     "--easing": "ease",
     "--transition": "var(--duration) var(--easing)",
-  } as any;
+  } as React.CSSProperties; // Cast plus propre que 'any'
 
   const backgroundStyle = {
     "--step": "5%",

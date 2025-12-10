@@ -10,17 +10,24 @@ interface SearchBarProps {
   isLoading?: boolean;
 }
 
+// --- CONFIGURATION DES LOGOS ---
+// On fait correspondre le nom interne (clé) avec ton fichier réel (valeur)
+const logoMap: Record<string, string> = {
+  youtube: "/Logos/Youtube_logo.png",
+  tiktok: "/Logos/tiktok.png",
+  spotify: "/Logos/spotify.png",
+  x: "/Logos/X-Logo.png"
+};
+
 export default function SearchBar({ onSearch, isLoading = false }: SearchBarProps) {
   const [url, setUrl] = useState("");
   const [platform, setPlatform] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null); // Référence pour contrôler l'input
+  const inputRef = useRef<HTMLInputElement>(null); 
 
-  // --- GESTION DU RACCOURCI CLAVIER "/" ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Si on appuie sur "/" et qu'on n'est pas déjà en train d'écrire ailleurs
       if (e.key === "/" && document.activeElement !== inputRef.current) {
-        e.preventDefault(); // Empêche d'écrire "/" dans la barre
+        e.preventDefault(); 
         inputRef.current?.focus();
       }
     };
@@ -36,10 +43,11 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
   };
 
   const detectPlatform = (link: string) => {
-    if (link.includes("youtube.com") || link.includes("youtu.be")) return setPlatform("youtube");
-    if (link.includes("tiktok.com")) return setPlatform("tiktok");
-    if (link.includes("spotify.com")) return setPlatform("spotify");
-    if (link.includes("x.com") || link.includes("twitter.com")) return setPlatform("x");
+    const lower = link.toLowerCase();
+    if (lower.includes("youtube.com") || lower.includes("youtu.be")) return setPlatform("youtube");
+    if (lower.includes("tiktok.com")) return setPlatform("tiktok");
+    if (lower.includes("spotify.com")) return setPlatform("spotify");
+    if (lower.includes("x.com") || lower.includes("twitter.com")) return setPlatform("x");
     
     setPlatform(null);
   };
@@ -85,18 +93,21 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
 
         <div className="relative flex items-center bg-neutral-900 border border-neutral-800 rounded-xl p-2 shadow-2xl">
           
-          <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-neutral-800 ml-1">
+          <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-neutral-800 ml-1 overflow-hidden">
             <AnimatePresence mode="wait">
-              {platform ? (
+              {platform && logoMap[platform] ? (
                 <motion.img
                   key={platform}
                   initial={{ scale: 0, rotate: -20 }}
                   animate={{ scale: 1, rotate: 0 }}
                   exit={{ scale: 0, rotate: 20 }}
-                  src={`/logos/${platform}.svg`} 
+                  src={logoMap[platform]} // Utilise le bon chemin défini en haut
                   alt={platform}
-                  className="w-6 h-6"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  className="w-8 h-8 object-contain" // Ajusté pour le PNG
+                  onError={(e) => { 
+                      // Cache l'image si elle ne charge pas
+                      (e.target as HTMLImageElement).style.display = 'none'; 
+                  }}
                 />
               ) : (
                 <motion.div
@@ -112,7 +123,7 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
           </div>
 
           <input
-            ref={inputRef} // On attache la référence ici
+            ref={inputRef}
             type="text"
             value={url}
             onChange={handleInput}
@@ -122,7 +133,6 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
             className="flex-1 bg-transparent border-none outline-none text-white px-4 py-3 placeholder-neutral-500 font-medium disabled:opacity-50 min-w-0"
           />
 
-          {/* Indication visuelle du raccourci (cachée si on écrit) */}
           {!url && (
             <div className="hidden md:flex items-center gap-1 mr-3 pointer-events-none select-none">
                 <kbd className="h-5 min-w-[20px] flex items-center justify-center rounded bg-neutral-800 border border-neutral-700 text-[10px] font-sans text-neutral-500">

@@ -14,8 +14,10 @@
     "framer-motion": "^12.23.25",
     "lucide-react": "^0.556.0",
     "next": "16.0.8",
+    "rc-slider": "^11.1.9",
     "react": "19.2.1",
     "react-dom": "19.2.1",
+    "react-player": "^3.4.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0"
   },
