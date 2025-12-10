@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Download, Music, Video, X, User, Clock, Eye, Loader2, Pencil, Scissors, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -10,11 +10,9 @@ import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import { timeToSeconds, secondsToTime, calculateCutSize, getPlatformLogo } from "../lib/utils";
 import { VideoData, DownloadOption } from "../types";
-import dynamic from 'next/dynamic';
-
-// Import du player sans SSR
+import ReactPlayerSource from 'react-player';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const ReactPlayer = dynamic(() => import('react-player'), { ssr: false }) as React.ComponentType<any>;
+const ReactPlayer = ReactPlayerSource as any;
 
 interface VideoCardProps {
   data: VideoData;
@@ -57,6 +55,10 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
   const [hasStarted, setHasStarted] = useState(false);
   const [playerError, setPlayerError] = useState(false); // Gestion d'erreur lecture
   const [isMounted, setIsMounted] = useState(false);
+
+  // Ref pour le player
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const playerRef = useRef<any>(null);
 
   // Détection du format
   const isVertical = data.is_vertical || false;
@@ -142,6 +144,32 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
 
   const getRangeValues = () => Array.isArray(range) ? range : [0, 0];
 
+  const handleSliderChange = (val: number | number[]) => {
+    if (!Array.isArray(val)) return;
+
+    const oldStart = Array.isArray(range) ? range[0] : 0;
+    const oldEnd = Array.isArray(range) ? range[1] : 0;
+    const newStart = val[0];
+    const newEnd = val[1];
+
+    setRange(val);
+
+    // Si on bouge le curseur de début, on seek au début
+    if (newStart !== oldStart) {
+      if (playerRef.current?.seekTo) {
+        playerRef.current.seekTo(newStart, 'seconds');
+      }
+      setHasStarted(true); // On force le démarrage si ça n'était pas fait
+    }
+    // Si on bouge le curseur de fin, on seek à la fin pour visualiser
+    else if (newEnd !== oldEnd) {
+      if (playerRef.current?.seekTo) {
+        playerRef.current.seekTo(newEnd, 'seconds');
+      }
+      setHasStarted(true);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 50, scale: 0.95 }}
@@ -167,7 +195,6 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
                 */}
               <div
                 className={`absolute inset-0 z-10 flex items-center justify-center bg-black transition-opacity duration-500 ${hasStarted && !playerError ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-                onClick={() => !playerError && setHasStarted(true)}
               >
                 {/* GESTION D'ERREUR DE LECTURE */}
                 {playerError ? (
@@ -192,7 +219,7 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
                         <img
                           src={data.thumbnail}
                           alt={data.title}
-                          className="w-full h-full object-cover transition-transform duration-700 hover:scale-105 opacity-90 hover:opacity-100"
+                          className="w-full h-full object-cover opacity-90"
                           onError={() => setThumbnailError(true)}
                         />
                         {/* Petit gradient pour lisibilité */}
@@ -212,15 +239,6 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
                       )
                     )}
 
-                    {/* Overlay bouton play (Toujours visible sur l'overlay) */}
-                    <div className="absolute inset-0 flex items-center justify-center cursor-pointer">
-                      <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xl hover:scale-110 transition-transform duration-300 active:scale-95">
-                        <svg className="w-8 h-8 text-white ml-1 drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      </div>
-                    </div>
-
                     {/* LOGO DE LA PLATEFORME (en haut à droite) */}
                     {platformLogo && (
                       <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg p-2 shadow-lg pointer-events-none z-30">
@@ -238,6 +256,7 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
 
               {!playerError && (
                 <ReactPlayer
+                  ref={playerRef}
                   key={data.original_url} // Reset si l'URL change
                   url={
                     // Si c'est YouTube, on utilise l'URL normale (iframe stable)
@@ -254,7 +273,8 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
                   // Pas de mode light, on gère nous-mêmes l'affichage
                   playing={hasStarted}
 
-                  config={playerConfig}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  config={playerConfig as any}
 
                   // Quand la vidéo commence
                   onStart={() => setHasStarted(true)}
@@ -300,8 +320,8 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
           <div className="mb-6 space-y-4">
             {/* Titre et Format Détecté */}
             <div className="relative group/edit">
-              <div className="text-[10px] font-mono mb-1 p-1 bg-black/50 rounded inline-block border border-white/10">
-                <span className="text-neutral-500">FORMAT DÉTECTÉ: </span>
+              <div className="text-xs font-mono mb-2 p-2 bg-neutral-900/50 rounded-lg inline-block border border-neutral-700 shadow-sm">
+                <span className="text-neutral-400 font-semibold tracking-wider">FORMAT DÉTECTÉ: </span>
                 <span className={isVertical ? "text-blue-400 font-bold" : "text-green-400 font-bold"}>
                   {isVertical ? "📱 VERTICAL (9:16)" : "💻 HORIZONTAL (16:9)"}
                 </span>
@@ -322,11 +342,13 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
                   {isTrimming && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                       <div className="px-2 pb-2">
-                        <Slider range min={0} max={durationSec} value={range} onChange={(val) => setRange(val)} trackStyle={[{ backgroundColor: '#8b5cf6' }]} handleStyle={[{ borderColor: '#8b5cf6', backgroundColor: '#000' }, { borderColor: '#8b5cf6', backgroundColor: '#000' }]} railStyle={{ backgroundColor: '#262626' }} />
-                        <div className="flex justify-between mt-3 text-xs font-mono font-medium text-white">
-                          <span className="bg-neutral-800 px-2 py-1 rounded border border-neutral-700">{secondsToTime(getRangeValues()[0])}</span>
-                          <span className="text-neutral-500">➜</span>
-                          <span className="bg-neutral-800 px-2 py-1 rounded border border-neutral-700">{secondsToTime(getRangeValues()[1])}</span>
+                        <Slider range min={0} max={durationSec} value={range} onChange={handleSliderChange} trackStyle={[{ backgroundColor: '#8b5cf6' }]} handleStyle={[{ borderColor: '#8b5cf6', backgroundColor: '#000' }, { borderColor: '#8b5cf6', backgroundColor: '#000' }]} railStyle={{ backgroundColor: '#262626' }} />
+                        <div className="flex justify-between mt-3 text-xs font-mono font-medium text-white items-center">
+                          <div className="flex gap-2 items-center">
+                            <span className="bg-neutral-800 px-2 py-1 rounded border border-neutral-700">{secondsToTime(getRangeValues()[0])}</span>
+                            <span className="text-neutral-500">➜</span>
+                            <span className="bg-neutral-800 px-2 py-1 rounded border border-neutral-700">{secondsToTime(getRangeValues()[1])}</span>
+                          </div>
                         </div>
                         <div className="text-center mt-2 text-[10px] text-neutral-500">Durée finale : {secondsToTime(getRangeValues()[1] - getRangeValues()[0])}</div>
                       </div>
