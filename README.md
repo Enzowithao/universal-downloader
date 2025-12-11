@@ -1,18 +1,18 @@
-# 🎥 Universal Downloader (v3.5)
+# 🎥 Universal Downloader (v3.6)
 
 **L'outil ultime pour télécharger vos contenus préférés en haute qualité.**
 
-Compatible avec YouTube, TikTok, X (Twitter) et Instagram. Sans publicité, sans limite, 100% gratuit, et maintenant **ultra-sécurisé**.
+Compatible avec YouTube, TikTok, X (Twitter) et Instagram. Sans publicité, sans limite, 100% gratuit, et maintenant **ultra-rapide**.
 
-![Aperçu du projet](https://via.placeholder.com/800x400?text=Universal+Downloader+v3.5)
+![Aperçu du projet](https://via.placeholder.com/800x400?text=Universal+Downloader+v3.6)
 
-## ✨ Nouveautés v3.5 (VPS Ready)
+## ✨ Nouveautés v3.6 (Real-time ⚡)
 
+- ⚡ **WebSockets** : Suivi de progression en temps réel (vitesse, pourcentage, ETA) sans rechargement.
+- 🎨 **Interface Dynamique** : Mises à jour instantanées sur les miniatures et la file d'attente.
+- 🚀 **Optimisation** : Téléchargement parallèle fragmenté (8x plus rapide) et conversion MP3 optimisée.
 - 🔒 **Accès Sécurisé** : Protection complète du site par mot de passe administrateur.
-- 🕵️ **Mode Furtif** : Configuration SEO (robots.txt, meta tags) pour empêcher l'indexation par Google.
-- 🚀 **VPS Ready** : Fichiers de configuration PM2 et Nginx inclus pour un déploiement professionnel.
-- 🎨 **Interface Épurée** : Suppression des références Spotify, intégration des vrais logos sociaux.
-- 🛠️ **Correctifs** : Résolution des bugs de playlists et du support Instagram/TikTok.
+- 🕵️ **Mode Furtif** : Configuration SEO pour empêcher l'indexation.
 
 ## 🌟 Fonctionnalités Principales
 
@@ -24,15 +24,15 @@ Compatible avec YouTube, TikTok, X (Twitter) et Instagram. Sans publicité, sans
 
 ## 🛠️ Stack Technique
 
-- **Frontend** : Next.js 14, Tailwind CSS, Framer Motion.
-- **Backend** : FastAPI (Python), yt-dlp, FFmpeg.
+- **Frontend** : Next.js 14, React, Tailwind CSS, Framer Motion.
+- **Backend** : FastAPI (Python), WebSockets, yt-dlp, FFmpeg.
 - **Sécurité** : Middleware Next.js, Auth par Cookie HttpOnly.
 
 ## 📦 Installation & Lancement
 
 Pré-requis : `FFmpeg`, `Node.js`, `Python 3.10+`.
 
-> 📘 **Besoin d'aide ?** Consulte le [Guide d'Installation Détaillé (Windows/Linux)](./INSTALLATION_GUIDE.md) pour un tutoriel pas à pas.
+> 📘 **Besoin d'aide ?** Consultez le guide détaillé ci-dessous.
 
 ### 1. Cloner le projet
 
@@ -54,7 +54,7 @@ APP_PASSWORD=VotreMotDePasseSuperSecret
 \`\`\`bash
 cd backend
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # Sur Windows: .\venv\Scripts\Activate
 pip install -r requirements.txt
 uvicorn main:app --reload
 \`\`\`
@@ -68,14 +68,6 @@ npm run dev
 \`\`\`
 
 L'application sera accessible sur \`http://localhost:3000\`.
-
-## ☁️ Déploiement VPS (Production)
-
-Le projet inclut une configuration prête à l'emploi pour PM2 et Nginx.
-
-1.  **PM2** : Utilisez \`ecosystem.config.js\` à la racine pour lancer les deux services (Frontend + Backend) simultanément.
-2.  **Nginx** : Utilisez le modèle \`nginx.conf\` pour configurer votre Reverse Proxy et sécuriser les ports.
-3.  **Variable Admin** : Assurez-vous que \`APP_PASSWORD\` est défini dans \`ecosystem.config.js\` lors du déploiement.
 
 ---
 
