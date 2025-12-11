@@ -15,6 +15,7 @@ import { MediaData } from "../types";
 import PlaylistSidebar from "../components/PlaylistSidebar";
 import DownloadQueue, { QueueItem } from "../components/DownloadQueue";
 import BackgroundElements from "../components/BackgroundElements";
+import { useWebSocket } from "../hooks/useWebSocket";
 // New Import
 import Library from "../components/Library";
 import { LayoutGrid, Download as DownloadIcon, Palette } from "lucide-react";
@@ -101,84 +102,80 @@ export default function Home() {
         }
     };
 
+
+
+    const { subscribe } = useWebSocket();
+
+    useEffect(() => {
+        const unsubscribe = subscribe((msg) => {
+            if (!msg.taskId) return;
+
+            setQueueItems(prev => {
+                const exists = prev.find(item => item.id === msg.taskId);
+
+                if (exists) {
+                    // Update existing item
+                    return prev.map(item => {
+                        if (item.id !== msg.taskId) return item;
+
+                        // Handle completion (auto-download)
+                        if (msg.status === 'finished' && item.status !== 'finished') {
+                            const link = document.createElement('a');
+                            link.href = `${API_URL}/api/download/${msg.taskId}`;
+                            link.setAttribute('download', '');
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            toast.success(`Terminé: ${msg.title || item.title}`);
+
+                            // Auto clear after 5s
+                            setTimeout(() => {
+                                setQueueItems(curr => curr.filter(p => p.id !== msg.taskId));
+                            }, 5000);
+                        }
+
+                        return {
+                            ...item,
+                            title: msg.title || item.title,
+                            progress: msg.progress || 0,
+                            status: (msg.status as any),
+                            error: msg.error
+                        };
+                    });
+                } else if (msg.status === 'pending' || msg.status === 'downloading') {
+                    // Add new item (Multi-tab sync)
+                    return [...prev, {
+                        id: msg.taskId!,
+                        title: msg.title || "Téléchargement...",
+                        progress: msg.progress || 0,
+                        status: (msg.status as any),
+                        error: msg.error
+                    }];
+                }
+                return prev;
+            });
+        });
+        return () => unsubscribe();
+    }, [subscribe]);
+
     const launchBatch = async (formatId: string) => {
         setShowBatchModal(false);
         toast.info(`Lancement de ${batchUrls.length} téléchargements...`);
 
         for (const url of batchUrls) {
             try {
-                await new Promise(r => setTimeout(r, 500));
-
-                // Temporary queue item
-                const tempId = Math.random().toString(36).substr(2, 9);
-                setQueueItems(prev => [...prev, {
-                    id: tempId,
-                    title: "Préparation...",
-                    progress: 0,
-                    status: 'pending'
-                }]);
+                await new Promise(r => setTimeout(r, 200));
 
                 const prepareUrl = `${API_URL}/api/prepare?url=${encodeURIComponent(url)}&format_id=${encodeURIComponent(formatId)}&title=&start=0&end=0`;
-                const res = await fetch(prepareUrl, { method: 'POST' });
+                // No need to manually add to queue, the 'pending' broadcast will do it.
+                // But to be responsive, we can call it.
+                // Actually, let's rely on WS for consistency.
+                await fetch(prepareUrl, { method: 'POST' });
 
-                if (res.ok) {
-                    const { task_id } = await res.json();
-                    // Update temp item with real task_id
-                    setQueueItems(prev => prev.map(item => item.id === tempId ? { ...item, id: task_id, status: 'downloading' } : item));
-                    monitorBatchDownload(task_id);
-                } else {
-                    setQueueItems(prev => prev.filter(item => item.id !== tempId));
-                }
             } catch (e) {
                 console.error(e);
             }
         }
-    };
-
-    const monitorBatchDownload = (taskId: string) => {
-        const interval = setInterval(async () => {
-            try {
-                const res = await fetch(`${API_URL}/api/progress/${taskId}`);
-                if (res.ok) {
-                    const task = await res.json();
-
-                    setQueueItems(prev => prev.map(item => {
-                        if (item.id !== taskId) return item;
-                        return {
-                            ...item,
-                            title: task.title || item.title,
-                            progress: task.progress || 0,
-                            status: task.status === 'finished' ? 'finished' : task.status === 'error' ? 'error' : 'downloading',
-                            error: task.error
-                        };
-                    }));
-
-                    if (task.status === 'finished') {
-                        clearInterval(interval);
-                        // Auto-download only if not in library mode workflow (batch is usually auto)
-                        // But wait, the user might want them in the library now.
-                        // Let's keep the auto download blob for convenience for now.
-
-                        const link = document.createElement('a');
-                        link.href = `${API_URL}/api/download/${taskId}`;
-                        link.setAttribute('download', '');
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        toast.success(`Terminé: ${task.title}`);
-
-                        // Auto clear after 5s
-                        setTimeout(() => {
-                            setQueueItems(prev => prev.filter(p => p.id !== taskId));
-                        }, 5000);
-                    } else if (task.status === 'error') {
-                        clearInterval(interval);
-                    }
-                }
-            } catch {
-                clearInterval(interval);
-            }
-        }, 1000);
     };
 
     return (

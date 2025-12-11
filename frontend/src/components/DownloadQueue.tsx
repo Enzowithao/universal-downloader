@@ -5,7 +5,7 @@ export interface QueueItem {
     id: string;
     title: string;
     progress: number;
-    status: 'pending' | 'downloading' | 'finished' | 'error';
+    status: 'pending' | 'downloading' | 'processing' | 'finished' | 'error';
     error?: string;
 }
 
@@ -36,10 +36,10 @@ export default function DownloadQueue({ items, onClear, withSidebar = false }: D
 
                         <div className="flex items-center justify-between gap-3 pl-2">
                             <div className="flex items-center gap-3 min-w-0">
-                                {item.status === 'downloading' || item.status === 'pending' ? (
+                                {item.status === 'downloading' || item.status === 'pending' || item.status === 'processing' ? (
                                     <div className="relative">
-                                        <div className="absolute inset-0 bg-purple-500 rounded-full blur animate-pulse opacity-50"></div>
-                                        <Loader2 className="w-5 h-5 text-purple-400 animate-spin relative z-10" />
+                                        <div className={`absolute inset-0 rounded-full blur animate-pulse opacity-50 ${item.status === 'processing' ? 'bg-blue-500' : 'bg-purple-500'}`}></div>
+                                        <Loader2 className={`w-5 h-5 animate-spin relative z-10 ${item.status === 'processing' ? 'text-blue-400' : 'text-purple-400'}`} />
                                     </div>
                                 ) : item.status === 'finished' ? (
                                     <motion.div
@@ -60,10 +60,15 @@ export default function DownloadQueue({ items, onClear, withSidebar = false }: D
                                         <div className="absolute inset-0 bg-red-500/20 blur-md rounded-full"></div>
                                     </motion.div>
                                 )}
-                                <div className="flex flex-col min-w-0 justify-center gap-0.5 items-start text-left">
-                                    <span className="text-sm font-bold text-white truncate leading-tight">{item.title || "Démarrage..."}</span>
-                                    <span className="text-xs text-neutral-400 font-medium">
-                                        {item.status === 'finished' ? 'Téléchargement terminé' : item.status === 'error' ? 'Échec du téléchargement' : 'En cours...'}
+                                <div className="flex flex-col min-w-0 justify-center gap-0.5 items-start text-left flex-1">
+                                    <span className="text-sm font-bold text-white leading-tight break-words w-full">
+                                        {item.status === 'finished' ? 'Terminé' :
+                                            item.status === 'error' ? 'Erreur' :
+                                                item.status === 'processing' ? 'Traitement...' :
+                                                    'Téléchargement...'}
+                                    </span>
+                                    <span className="text-xs text-neutral-300 font-medium truncate w-full opacity-80">
+                                        {item.title || "Initialisation..."}
                                     </span>
                                 </div>
                             </div>

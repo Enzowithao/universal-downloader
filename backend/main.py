@@ -4,11 +4,14 @@ import uuid
 import threading
 import subprocess
 import yt_dlp
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict
+import json
+import asyncio
+import re
 
 app = FastAPI()
 
@@ -40,9 +43,44 @@ def check_dependencies():
 
 check_dependencies()
 
+# --- WEBSOCKET CONNECTION MANAGER ---
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        # Broadcast to all connected clients
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception:
+                # Handle broken pipes/disconnections gracefully
+                pass
+
+manager = ConnectionManager()
+
+
 # --- GLOBAL STATE (In-Memory Download Manager) ---
 # Structure: { task_id: { "status": "downloading"|"finished"|"error", "progress": 0.0, "filename": "...", "filepath": "...", "title": "..." } }
 download_tasks: Dict[str, dict] = {}
+
+
+@app.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection open, we primarily push data from server
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
 
 def cleanup_file(filepath: str):
@@ -370,6 +408,29 @@ def background_download(task_id: str, url: str, format_id: str, custom_title: st
             task['progress'] = 100.0
             task['status'] = 'processing' # Processing/Converting phase
 
+        # Helper to strip ANSI codes
+        def clean_str(s):
+            if not s: return ""
+            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+            return ansi_escape.sub('', str(s))
+
+        # BROADCAST UPDATE
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        speed = clean_str(d.get('_speed_str', 'N/A')) if d.get('status') == 'downloading' else ''
+        eta = clean_str(d.get('_eta_str', 'N/A')) if d.get('status') == 'downloading' else ''
+
+        loop.run_until_complete(manager.broadcast({
+            "type": "progress",
+            "taskId": task_id,
+            "status": task['status'],
+            "progress": task['progress'],
+            "speed": speed,
+            "eta": eta,
+        }))
+        loop.close()
+
     is_gif_mode = (format_id == "gif")
     
     # If GIF mode, we initially download as video (e.g. 720p or best available but not too huge)
@@ -382,6 +443,9 @@ def background_download(task_id: str, url: str, format_id: str, custom_title: st
         'progress_hooks': [progress_hook],
         'quiet': True,
         'noplaylist': True,
+        # Performance Optimizations
+        'concurrent_fragment_downloads': 8, # Download 8 fragments in parallel
+        'buffersize': 1024 * 1024, # 1MB buffer
     }
 
     # Audio conversion
@@ -447,11 +511,35 @@ def background_download(task_id: str, url: str, format_id: str, custom_title: st
                 task['filename'] = new_filename
 
             task['status'] = 'finished'
+            task['progress'] = 100.0
+
+            # --- FINAL SUCCESS BROADCAST ---
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(manager.broadcast({
+                "type": "progress",
+                "taskId": task_id,
+                "status": "finished",
+                "progress": 100.0,
+                "title": task.get('title', custom_title)
+            }))
+            loop.close()
 
     except Exception as e:
         print(f"Download Error: {e}")
         task['status'] = 'error'
         task['error'] = str(e)
+        
+        # Broadcast Error
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(manager.broadcast({
+            "type": "progress",
+            "taskId": task_id,
+            "status": "error",
+            "error": str(e)
+        }))
+        loop.close()
 
 
 @app.post("/api/prepare")
@@ -470,6 +558,15 @@ async def prepare_download(url: str, format_id: str, title: str, start: int = 0,
         "title": title,
         "created_at": time.time()
     }
+
+    # Notify start
+    await manager.broadcast({
+        "type": "progress",
+        "taskId": task_id,
+        "status": "pending",
+        "progress": 0,
+        "title": title
+    })
     
     thread = threading.Thread(
         target=background_download,
@@ -500,7 +597,8 @@ async def download_file(task_id: str, background_tasks: BackgroundTasks):
     
     # NO AUTO DELETE HERE for Library feature
     # We clear the task from memory but keep the file on disk
-    del download_tasks[task_id]
+    # We clear the task from memory but keep the file on disk
+    # del download_tasks[task_id] # FIX: Don't delete immediately to allow multiple triggers/retries
 
     return FileResponse(
         path=filepath, 

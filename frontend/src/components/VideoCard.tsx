@@ -12,6 +12,8 @@ import { timeToSeconds, secondsToTime, calculateCutSize, getPlatformLogo } from 
 import { VideoData } from "../types";
 import { API_URL } from "../config";
 import ReactPlayerSource from 'react-player';
+import { useWebSocket } from '../hooks/useWebSocket';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ReactPlayer = ReactPlayerSource as any;
 
@@ -46,6 +48,8 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
   const [customTitle, setCustomTitle] = useState(data.title);
   const [statusText, setStatusText] = useState<string>("");
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+  const { subscribe } = useWebSocket();
 
   // États pour le découpage
   const [durationSec, setDurationSec] = useState(0);
@@ -115,37 +119,7 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
       if (!prepareRes.ok) throw new Error("Erreur préparation");
       const { task_id } = await prepareRes.json();
 
-      // 2. Boucle de polling pour la progression
-      const pollInterval = setInterval(async () => {
-        try {
-          const progressRes = await fetch(`${API_URL}/api/progress/${task_id}`);
-          if (progressRes.ok) {
-            const task = await progressRes.json();
-
-            if (task.status === 'downloading') {
-              setStatusText(`Téléchargement... ${task.progress.toFixed(1)}%`);
-            } else if (task.status === 'processing') {
-              setStatusText("Traitement final...");
-            } else if (task.status === 'finished') {
-              clearInterval(pollInterval);
-              setStatusText("Terminé !");
-              setHasStarted(false); // Réafficher la thumbnail pour éviter l'écran gris
-              setTimeout(() => setDownloadingIndex(null), 2000); // Masquer l'overlay de chargement après 2s
-
-              // 3. Déclencher le téléchargement du fichier final
-              triggerFileDownload(task_id, task.title || customTitle);
-            } else if (task.status === 'error') {
-              clearInterval(pollInterval);
-              throw new Error(task.error || "Erreur inconnue");
-            }
-          }
-        } catch (e) {
-          console.error(e);
-          clearInterval(pollInterval);
-          setDownloadingIndex(null);
-          toast.error("Erreur de suivi progression");
-        }
-      }, 500);
+      setCurrentTaskId(task_id);
 
     } catch (e) {
       setDownloadingIndex(null);
@@ -153,6 +127,37 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
       toast.error("Erreur de démarrage");
     }
   };
+
+  useEffect(() => {
+    const unsubscribe = subscribe((msg) => {
+      if (!currentTaskId || msg.taskId !== currentTaskId) return;
+
+      if (msg.status === 'downloading') {
+        // Keep the overlay active (don't set to null) but update the text
+        // Set index to 0 (or whatever current index is being downloaded, assumed 0 for single card context)
+        // If downloadingIndex is null (e.g. from previous clear), set it back to active index
+        setDownloadingIndex((prev) => prev !== null ? prev : 0);
+        setStatusText(`Téléchargement... ${msg.progress?.toFixed(0)}%`);
+      } else if (msg.status === 'processing') {
+        setDownloadingIndex(0); // Show overlay for processing phase
+        setStatusText("Traitement final...");
+      } else if (msg.status === 'finished') {
+        setStatusText("Terminé !");
+        setHasStarted(false);
+        setDownloadingIndex(null);
+
+        // 3. Déclencher le téléchargement du fichier final
+        triggerFileDownload(currentTaskId, msg.title || customTitle);
+        setCurrentTaskId(null);
+      } else if (msg.status === 'error') {
+        setDownloadingIndex(null);
+        toast.error(msg.error || "Erreur inconnue");
+        setCurrentTaskId(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [subscribe, currentTaskId, customTitle]);
 
   const triggerFileDownload = (taskId: string, fileName: string) => {
     const link = document.createElement('a');
