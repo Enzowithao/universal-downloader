@@ -4,7 +4,7 @@
 
 Compatible avec YouTube, TikTok, X (Twitter) et Instagram. Sans publicité, sans limite, 100% gratuit, et maintenant **ultra-rapide**.
 
-![Aperçu du projet](https://via.placeholder.com/800x400?text=Universal+Downloader+v3.6)
+![Aperçu du projet](docs/preview.png)
 
 ## ✨ Nouveautés v3.6 (Real-time ⚡)
 
