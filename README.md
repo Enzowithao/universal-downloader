@@ -1,4 +1,4 @@
-# 🎥 Universal Downloader (v3.6)
+# 🎥 Universal Downloader (v3.7)
 
 **L'outil ultime pour télécharger vos contenus préférés en haute qualité.**
 
@@ -6,11 +6,12 @@ Compatible avec YouTube, TikTok, X (Twitter) et Instagram. Sans publicité, sans
 
 ![Aperçu du projet](docs/preview.png)
 
-## ✨ Nouveautés v3.6 (Real-time ⚡)
+## ✨ Nouveautés v3.7 (Multimedia & Polish 💎)
 
-- ⚡ **WebSockets** : Suivi de progression en temps réel (vitesse, pourcentage, ETA) sans rechargement.
+- 🏷️ **Éditeur de Métadonnées** : Modifiez titre, artiste, album et pochette pour vos fichiers MP3/MP4.
+- 🧹 **Nettoyage Ciblé** : Suppression module GIF pour alléger l'application et focus sur la qualité Audio/Vidéo.
+- ⚡ **WebSockets & Threads** : Optimisation CPU pour les conversions (MP3 utilise tous les cœurs).
 - 🎨 **Interface Dynamique** : Mises à jour instantanées sur les miniatures et la file d'attente.
-- 🚀 **Optimisation** : Téléchargement parallèle fragmenté (8x plus rapide) et conversion MP3 optimisée.
 - 🔒 **Accès Sécurisé** : Protection complète du site par mot de passe administrateur.
 - 🕵️ **Mode Furtif** : Configuration SEO pour empêcher l'indexation.
 

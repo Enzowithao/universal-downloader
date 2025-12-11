@@ -2,7 +2,7 @@ import os
 import time
 import uuid
 import threading
-import subprocess
+
 import yt_dlp
 from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +11,13 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict
 import json
 import asyncio
+import asyncio
 import re
+import mutagen
+from mutagen.easyid3 import EasyID3
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB
+from mutagen.mp4 import MP4, MP4Cover
 
 app = FastAPI()
 
@@ -93,32 +99,7 @@ def cleanup_file(filepath: str):
         print(f"Error deleting file: {e}")
 
 
-def convert_to_gif(input_path: str, output_path: str):
-    """Convertit une vidéo en GIF optimisé."""
-    # Palette generation for better quality
-    palette_path = os.path.join(os.path.dirname(input_path), "palette.png")
-    
-    try:
-        # 1. Generate palette
-        subprocess.run([
-            "ffmpeg", "-y", "-i", input_path, 
-            "-vf", "fps=15,scale=480:-1:flags=lanczos,palettegen", 
-            palette_path
-        ], check=True)
-        
-        # 2. Convert to GIF using palette
-        subprocess.run([
-            "ffmpeg", "-y", "-i", input_path, "-i", palette_path,
-            "-lavfi", "fps=15,scale=480:-1:flags=lanczos [x]; [x][1:v] paletteuse",
-            output_path
-        ], check=True)
-        
-    except subprocess.CalledProcessError as e:
-        print(f"GIF Conversion Error: {e}")
-        raise e
-    finally:
-        if os.path.exists(palette_path):
-            os.remove(palette_path)
+
 
 
 class VideoInfo(BaseModel):
@@ -431,14 +412,9 @@ def background_download(task_id: str, url: str, format_id: str, custom_title: st
         }))
         loop.close()
 
-    is_gif_mode = (format_id == "gif")
-    
-    # If GIF mode, we initially download as video (e.g. 720p or best available but not too huge)
-    actual_format = "bestvideo[height<=720]+bestaudio/best" if is_gif_mode else (format_id if format_id != "bestaudio/best" else "bestaudio/best")
-
     # Config yt-dlp
     ydl_opts = {
-        'format': actual_format,
+        'format': format_id if format_id != "bestaudio/best" else "bestaudio/best",
         'outtmpl': os.path.join(DOWNLOAD_DIR, f"{task_id}_%(title)s.%(ext)s"),
         'progress_hooks': [progress_hook],
         'quiet': True,
@@ -449,12 +425,15 @@ def background_download(task_id: str, url: str, format_id: str, custom_title: st
     }
 
     # Audio conversion
-    if format_id == "bestaudio/best" and not is_gif_mode:
+    if format_id == "bestaudio/best":
         ydl_opts['postprocessors'] = [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }]
+        ydl_opts['postprocessor_args'] = [
+            '-threads', '0'
+        ]
 
     # Video cutting
     if start_time > 0 or end_time > 0:
@@ -475,22 +454,7 @@ def background_download(task_id: str, url: str, format_id: str, custom_title: st
             task['filepath'] = filepath
             task['filename'] = os.path.basename(filepath)
             
-            # --- GIF CONVERSION ---
-            if is_gif_mode:
-                task['status'] = 'processing'
-                gif_filename = os.path.splitext(task['filename'])[0] + ".gif"
-                gif_filepath = os.path.join(DOWNLOAD_DIR, gif_filename)
-                
-                try:
-                    convert_to_gif(filepath, gif_filepath)
-                    # Remove original video after conversion
-                    if os.path.exists(filepath):
-                        os.remove(filepath)
-                    
-                    task['filepath'] = gif_filepath
-                    task['filename'] = gif_filename
-                except Exception as e:
-                    raise Exception(f"GIF Conversion failed: {str(e)}")
+
 
             # Apply custom title
             if custom_title:
@@ -607,6 +571,90 @@ async def download_file(task_id: str, background_tasks: BackgroundTasks):
     )
 
 
+class MetadataRequest(BaseModel):
+    filename: str
+    title: str
+    artist: str
+    album: str
+    cover_url: Optional[str] = None
+
+@app.post("/api/metadata")
+async def update_metadata(data: MetadataRequest):
+    filepath = os.path.join(DOWNLOAD_DIR, data.filename)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        ext = os.path.splitext(filepath)[1].lower()
+        
+        # Helper to fetch cover image data
+        cover_data = None
+        if data.cover_url:
+            import requests
+            try:
+                r = requests.get(data.cover_url, timeout=10)
+                if r.status_code == 200:
+                    cover_data = r.content
+            except Exception as e:
+                print(f"Failed to fetch cover: {e}")
+
+        # --- MP3 Handling ---
+        if ext == ".mp3":
+            try:
+                audio = MP3(filepath, ID3=ID3)
+            except:
+                audio = MP3(filepath)
+                audio.add_tags()
+            
+            # Simple tags via EasyID3 for text (safer)
+            # But Mutagen ID3 is needed for Cover
+            
+            # Write text tags manually to avoid EasyID3 complexity with existing tags
+            if audio.tags is None: audio.add_tags()
+            
+            audio.tags.add(TIT2(encoding=3, text=data.title))
+            audio.tags.add(TPE1(encoding=3, text=data.artist))
+            audio.tags.add(TALB(encoding=3, text=data.album))
+
+            if cover_data:
+                audio.tags.add(
+                    APIC(
+                        encoding=3, # 3 is UTF-8
+                        mime='image/jpeg', # assume jpeg or png
+                        type=3, # 3 is for the cover image
+                        desc=u'Cover',
+                        data=cover_data
+                    )
+                )
+            audio.save()
+
+        # --- MP4/M4A Handling ---
+        elif ext in [".mp4", ".m4a"]:
+            video = MP4(filepath)
+            video["\xa9nam"] = data.title # Title
+            video["\xa9ART"] = data.artist # Artist
+            video["\xa9alb"] = data.album  # Album
+            
+            if cover_data:
+                video["covr"] = [MP4Cover(cover_data, imageformat=MP4Cover.FORMAT_JPEG if data.cover_url.endswith('jpg') or data.cover_url.endswith('jpeg') else MP4Cover.FORMAT_PNG)]
+            
+            video.save()
+            
+        else:
+             raise HTTPException(status_code=400, detail="Unsupported file format for metadata editing")
+             
+        # Rename file if title changed? (Optional, maybe risky if file is open. Let's just keep filename for now or do a safe rename)
+        # For this version, we ONLY update internal tags. Renaming the actual physical file might break the frontend 'filename' reference if not careful.
+        # But user might expect filename to change. 
+        # Let's keep it simple: Metadata only.
+
+        return {"status": "success", "message": "Tags updated"}
+
+    except Exception as e:
+        print(f"Metadata Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # --- LIBRARY ENDPOINTS ---
 
 @app.get("/api/library")
@@ -623,8 +671,8 @@ async def get_library():
                         ftype = "video"
                     elif ext in ['.mp3', '.m4a', '.wav']:
                         ftype = "audio"
-                    elif ext in ['.gif']:
-                        ftype = "gif"
+                    elif ext in ['.mp3', '.m4a', '.wav']:
+                        ftype = "audio"
                     else:
                         continue # Skip temp files or others
 

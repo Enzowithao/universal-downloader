@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Music, Video, X, User, Clock, Eye, Loader2, Pencil, Scissors, AlertTriangle, Image as ImageIcon } from "lucide-react";
+import { Download, Music, Video, X, User, Clock, Eye, Loader2, Pencil, Scissors, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import Slider from 'rc-slider';
@@ -466,33 +466,9 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
                   </motion.button>
                 );
               })}
-
-              {/* Bouton pour créer un GIF */}
-              <motion.button
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 }}
-                onClick={() => handleDownload('gif', 'GIF Animé', 999)}
-                disabled={downloadingIndex !== null}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                className="group cursor-pointer relative overflow-hidden flex items-center justify-between p-3 rounded-xl bg-background/50 border border-border hover:border-green-500/50 hover:bg-card transition-all disabled:opacity-50 disabled:cursor-wait mt-4"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition duration-500" />
-                <div className="flex items-center gap-4 relative z-10">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center border border-border bg-green-500/10 text-green-500">
-                    <ImageIcon className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-foreground font-semibold text-sm flex items-center gap-2">Créer un GIF <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-600 dark:text-green-400 font-mono">NOUVEAU</span></div>
-                    <div className="text-xs mt-0.5 text-muted">Max 720p • Sans son</div>
-                  </div>
-                </div>
-                <div className="relative z-10 w-8 h-8 rounded-full bg-muted/20 flex items-center justify-center group-hover:bg-green-500 group-hover:text-white transition-colors">
-                  {downloadingIndex === 999 ? (<Loader2 className="w-4 h-4 animate-spin text-foreground" />) : (<Download className="w-4 h-4" />)}
-                </div>
-              </motion.button>
             </div>
+
+
           </div>
         </div>
       </div>

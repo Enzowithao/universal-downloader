@@ -1,20 +1,28 @@
 import { useEffect, useState } from "react";
 import { API_URL } from "../config";
 import { formatBytes } from "../lib/utils";
-import { Trash2, Download, Film, Music, Image as ImageIcon, RefreshCw } from "lucide-react";
+import { Trash2, Download, Film, Music, Image as ImageIcon, RefreshCw, Pencil } from "lucide-react"; // Added Pencil
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import MetadataModal from "./MetadataModal";
 
 interface LibraryItem {
     name: string;
     size: number;
     created: number;
-    type: 'video' | 'audio' | 'gif';
+    type: 'video' | 'audio';
+    // Optional metadata fields
+    title?: string;
+    artist?: string;
+    album?: string;
+    cover?: string;
 }
 
 export default function Library() {
     const [files, setFiles] = useState<LibraryItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedFile, setSelectedFile] = useState<LibraryItem | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const fetchFiles = async () => {
         setLoading(true);
@@ -64,6 +72,24 @@ export default function Library() {
         document.body.removeChild(link);
     };
 
+    const handleEdit = (file: LibraryItem) => {
+        setSelectedFile(file);
+        setIsModalOpen(true);
+    };
+
+    const saveMetadata = async (data: any) => {
+        const res = await fetch(`${API_URL}/api/metadata`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (!res.ok) throw new Error("Erreur metadata");
+
+        // Refresh library to show updates (if filename changed, etc. - currently just refreshing list)
+        fetchFiles();
+    };
+
     return (
         <div className="w-full max-w-5xl mx-auto p-6 md:p-8 min-h-[60vh]">
             <div className="flex justify-between items-center mb-8">
@@ -102,15 +128,9 @@ export default function Library() {
                                 <div className="aspect-video bg-black/50 relative flex items-center justify-center overflow-hidden">
                                     {/* Preview */}
                                     {/* Preview */}
-                                    {file.type === 'gif' ? (
-                                        /* GIF handling with img tag */
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img
-                                            src={`${API_URL}/api/library/stream/${file.name}`}
-                                            alt={file.name}
-                                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-500"
-                                        />
-                                    ) : file.type === 'video' ? (
+                                    {/* Preview */}
+                                    {/* Preview */}
+                                    {file.type === 'video' ? (
                                         /* Video handling with safe play/pause */
                                         <video
                                             src={`${API_URL}/api/library/stream/${file.name}#t=0.01`}
@@ -143,8 +163,7 @@ export default function Library() {
                                     <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-xs font-bold text-white flex items-center gap-1.5 border border-white/10">
                                         {file.type === 'video' && <Film className="w-3 h-3 text-blue-400" />}
                                         {file.type === 'audio' && <Music className="w-3 h-3 text-purple-400" />}
-                                        {file.type === 'gif' && <ImageIcon className="w-3 h-3 text-green-400" />}
-                                        {file.type === 'video' ? 'MP4' : file.type === 'audio' ? 'MP3' : 'GIF'}
+                                        {file.type === 'video' ? 'MP4' : 'MP3'}
                                     </div>
                                 </div>
 
@@ -171,12 +190,34 @@ export default function Library() {
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
+                                        <button
+                                            onClick={() => handleEdit(file)}
+                                            className="p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg transition border border-transparent hover:border-blue-500/20"
+                                            title="Éditer les tags"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </button>
                                     </div>
                                 </div>
                             </motion.div>
                         ))}
                     </AnimatePresence>
                 </div>
+            )}
+
+            {selectedFile && (
+                <MetadataModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    file={{
+                        filename: selectedFile.name,
+                        title: selectedFile.title,
+                        artist: selectedFile.artist,
+                        album: selectedFile.album,
+                        cover: selectedFile.cover
+                    }}
+                    onSave={saveMetadata}
+                />
             )}
         </div>
     );
