@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { History as HistoryIcon, Trash2, Video, Music, Play, AlertTriangle } from "lucide-react"; // <-- Ajout AlertTriangle
+import { History as HistoryIcon, Trash2, Video, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface HistoryItem {
@@ -34,9 +34,13 @@ export default function History({ onSelect }: HistoryProps) {
   }, []);
 
   useEffect(() => {
-    loadHistory();
     const handleUpdate = () => loadHistory();
     window.addEventListener("historyUpdated", handleUpdate);
+
+    // Initial load
+    // eslint-disable-next-line
+    loadHistory();
+
     return () => {
       window.removeEventListener("historyUpdated", handleUpdate);
     };
@@ -66,68 +70,78 @@ export default function History({ onSelect }: HistoryProps) {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-5xl mt-16 px-4 mb-20 relative z-0"
       >
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <HistoryIcon className="w-5 h-5 text-neutral-400" />
-            Récent
-          </h3>
-          <button
-            onClick={() => setShowConfirm(true)} // On ouvre la modale au lieu de confirm()
-            className="text-xs text-neutral-500 hover:text-red-400 transition flex items-center gap-1"
-          >
-            <Trash2 className="w-3 h-3" /> Tout effacer
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <AnimatePresence>
-            {history.map((item) => (
-              <motion.div
-                key={item.id}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                onClick={() => onSelect(item.url)}
-                className="group relative bg-neutral-900/40 border border-neutral-800 hover:border-neutral-600 rounded-xl overflow-hidden cursor-pointer transition-all hover:bg-neutral-800/60"
+        <div className="w-full max-w-2xl mx-auto mt-12 mb-20">
+          <div className="flex items-center justify-between mb-6 px-4">
+            <h3 className="text-xl font-bold flex items-center gap-2 text-foreground">
+              <HistoryIcon className="w-5 h-5 text-accent" />
+              Historique récent
+            </h3>
+            {history.length > 0 && (
+              <button
+                onClick={() => setShowConfirm(true)}
+                className="text-xs text-muted hover:text-red-400 transition flex items-center gap-1 hover:bg-red-500/10 px-2 py-1 rounded"
               >
-                {/* Image & Type */}
-                <div className="relative h-32 w-full">
-                  <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent" />
+                <Trash2 className="w-3 h-3" /> Tout effacer
+              </button>
+            )}
+          </div>
 
-                  <div className={`absolute top-2 right-2 px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 ${item.type === 'video' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
-                    }`}>
-                    {item.type === 'video' ? <Video className="w-3 h-3" /> : <Music className="w-3 h-3" />}
-                    {item.quality}
-                  </div>
-
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
-                    <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center">
-                      <Play className="w-4 h-4 text-white fill-white" />
+          <div className="space-y-3">
+            <AnimatePresence mode="popLayout">
+              {history.map((item) => (
+                <motion.div
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -50 }}
+                  key={item.id}
+                  onClick={() => onSelect(item.url)}
+                  className="bg-card border border-border p-4 rounded-xl flex items-center gap-4 group hover:border-accent transition-colors shadow-sm cursor-pointer"
+                >
+                  <div className="relative w-20 aspect-video rounded-lg overflow-hidden flex-shrink-0 bg-muted/20 border border-border">
+                    {item.thumbnail ? (
+                      <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted">
+                        <Video className="w-6 h-6" />
+                      </div>
+                    )}
+                    <div className="absolute bottom-1 right-1 bg-black/70 backdrop-blur-sm px-1 rounded text-[10px] font-bold text-white">
+                      {item.quality}
                     </div>
                   </div>
-                </div>
 
-                {/* Infos */}
-                <div className="p-3">
-                  <h4 className="text-sm font-medium text-white line-clamp-1 mb-1">{item.title}</h4>
-                  <div className="flex items-center justify-between text-xs text-neutral-500">
-                    <span>{item.uploader}</span>
-                    <span>{item.date}</span>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-sm text-foreground truncate group-hover:text-accent transition-colors">
+                      {item.title}
+                    </h4>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-muted">
+                      <span className="flex items-center gap-1">
+                        {item.date}
+                      </span>
+                      {item.uploader && (
+                        <span className="truncate max-w-[120px]">• {item.uploader}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <button
-                  onClick={(e) => deleteItem(e, item.id)}
-                  className="absolute top-2 left-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 hover:bg-red-500/80 transition"
-                  title="Retirer de l'historique"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                  <button
+                    onClick={(e) => deleteItem(e, item.id)}
+                    className="p-2 rounded-full bg-muted/10 text-muted hover:bg-red-500 hover:text-white transition flex-shrink-0"
+                    title="Retirer de l'historique"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {history.length === 0 && (
+              <div className="text-center py-12 text-muted bg-card/30 border border-border rounded-2xl border-dashed">
+                <p>Aucun téléchargement récent</p>
+              </div>
+            )}
+          </div>
         </div>
       </motion.div>
 

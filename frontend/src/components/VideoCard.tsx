@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Music, Video, X, User, Clock, Eye, Loader2, Pencil, Scissors, AlertTriangle } from "lucide-react";
+import { Download, Music, Video, X, User, Clock, Eye, Loader2, Pencil, Scissors, AlertTriangle, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import Slider from 'rc-slider';
@@ -205,9 +205,9 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       className="w-full max-w-4xl mx-auto mt-8 relative group"
     >
-      <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-blue-600 rounded-[2rem] opacity-20 blur-xl group-hover:opacity-40 transition duration-1000"></div>
+      <div className="absolute -inset-1 bg-gradient-to-r from-accent to-blue-600 rounded-[2rem] opacity-20 blur-xl group-hover:opacity-40 transition duration-1000"></div>
 
-      <div className={`relative bg-[#0a0a0a] border border-neutral-800 rounded-[1.8rem] overflow-hidden shadow-2xl flex flex-col ${isVertical ? 'md:flex-row md:items-stretch' : 'md:flex-col'}`}>
+      <div className={`relative bg-card border border-border rounded-[1.8rem] overflow-hidden shadow-2xl flex flex-col ${isVertical ? 'md:flex-row md:items-stretch' : 'md:flex-col'}`}>
 
         {/* --- ZONE DU LECTEUR VIDÉO --- */}
         <div
@@ -260,7 +260,7 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
                             }
                             alt={data.title}
                             className="w-full h-full object-cover opacity-90"
-                            onError={(e) => {
+                            onError={() => {
                               // Si le chargement échoue, on masque
                               setThumbnailError(true);
                             }}
@@ -358,14 +358,14 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
         </div>
 
         {/* --- ZONE D'INFORMATIONS --- */}
-        <div className={`p-6 md:p-8 flex flex-col justify-between relative ${isVertical ? 'md:w-7/12' : 'w-full'}`}>
-          <button onClick={onReset} className="absolute top-4 right-4 p-2 rounded-full bg-neutral-900/50 hover:bg-neutral-800 text-neutral-400 hover:text-white transition"><X className="w-5 h-5" /></button>
+        <div className={`p-6 md:p-8 flex flex-col justify-between relative ${isVertical ? 'md:w-7/12' : 'w-full'} text-foreground`}>
+          <button onClick={onReset} className="absolute top-4 right-4 p-2 rounded-full bg-muted/20 hover:bg-muted/30 text-muted hover:text-foreground transition"><X className="w-5 h-5" /></button>
 
           <div className="mb-6 space-y-4">
             {/* Titre et Format Détecté */}
             <div className="relative group/edit">
-              <div className="text-xs font-mono mb-2 p-2 bg-neutral-900/50 rounded-lg inline-block border border-neutral-700 shadow-sm">
-                <span className="text-neutral-400 font-semibold tracking-wider">FORMAT DÉTECTÉ: </span>
+              <div className="text-xs font-mono mb-2 p-2 bg-muted/10 rounded-lg inline-block border border-border shadow-sm">
+                <span className="text-muted font-semibold tracking-wider">FORMAT DÉTECTÉ: </span>
                 <span className={`font-bold ${data.orientation === 'portrait' ? "text-blue-400" :
                   data.orientation === 'square' ? "text-purple-400" :
                     "text-green-400"
@@ -376,30 +376,30 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
                 </span>
               </div>
 
-              <input type="text" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} className="w-full bg-transparent text-2xl md:text-3xl font-bold leading-tight text-white border-b border-transparent focus:border-purple-500 outline-none transition-all placeholder-neutral-600 md:pr-10 pb-1" />
-              <Pencil className="absolute top-2 right-2 w-5 h-5 text-neutral-600 opacity-0 group-hover/edit:opacity-100 pointer-events-none transition-opacity" />
+              <input type="text" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} className="w-full bg-transparent text-2xl md:text-3xl font-bold leading-tight text-foreground border-b border-transparent focus:border-accent outline-none transition-all placeholder:text-muted md:pr-10 pb-1" />
+              <Pencil className="absolute top-2 right-2 w-5 h-5 text-muted opacity-0 group-hover/edit:opacity-100 pointer-events-none transition-opacity" />
             </div>
 
             {/* Slider de découpage */}
             {durationSec > 0 && (
-              <div className="bg-neutral-900/50 rounded-xl p-4 border border-neutral-800">
+              <div className="bg-muted/5 rounded-xl p-4 border border-border">
                 <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-2 text-xs font-bold text-neutral-400 uppercase tracking-widest"><Scissors className="w-3 h-3" /> Découpage</div>
-                  <button onClick={() => setIsTrimming(!isTrimming)} className={`text-[10px] px-2 py-1 rounded border transition ${isTrimming ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-white'}`}>{isTrimming ? "ACTIVÉ" : "DÉSACTIVÉ"}</button>
+                  <div className="flex items-center gap-2 text-xs font-bold text-muted uppercase tracking-widest"><Scissors className="w-3 h-3" /> Découpage</div>
+                  <button onClick={() => setIsTrimming(!isTrimming)} className={`text-[10px] px-2 py-1 rounded border transition ${isTrimming ? 'bg-accent/10 border-accent text-accent' : 'bg-muted/10 border-border text-muted hover:text-foreground'}`}>{isTrimming ? "ACTIVÉ" : "DÉSACTIVÉ"}</button>
                 </div>
                 <AnimatePresence>
                   {isTrimming && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                       <div className="px-2 pb-2">
-                        <Slider range min={0} max={durationSec} value={range} onChange={handleSliderChange} trackStyle={[{ backgroundColor: '#8b5cf6' }]} handleStyle={[{ borderColor: '#8b5cf6', backgroundColor: '#000' }, { borderColor: '#8b5cf6', backgroundColor: '#000' }]} railStyle={{ backgroundColor: '#262626' }} />
-                        <div className="flex justify-between mt-3 text-xs font-mono font-medium text-white items-center">
+                        <Slider range min={0} max={durationSec} value={range} onChange={handleSliderChange} trackStyle={[{ backgroundColor: 'var(--accent)' }]} handleStyle={[{ borderColor: 'var(--accent)', backgroundColor: 'var(--background)' }, { borderColor: 'var(--accent)', backgroundColor: 'var(--background)' }]} railStyle={{ backgroundColor: 'var(--border)' }} />
+                        <div className="flex justify-between mt-3 text-xs font-mono font-medium text-foreground items-center">
                           <div className="flex gap-2 items-center">
-                            <span className="bg-neutral-800 px-2 py-1 rounded border border-neutral-700">{secondsToTime(getRangeValues()[0])}</span>
-                            <span className="text-neutral-500">➜</span>
-                            <span className="bg-neutral-800 px-2 py-1 rounded border border-neutral-700">{secondsToTime(getRangeValues()[1])}</span>
+                            <span className="bg-muted/10 px-2 py-1 rounded border border-border">{secondsToTime(getRangeValues()[0])}</span>
+                            <span className="text-muted">➜</span>
+                            <span className="bg-muted/10 px-2 py-1 rounded border border-border">{secondsToTime(getRangeValues()[1])}</span>
                           </div>
                         </div>
-                        <div className="text-center mt-2 text-[10px] text-neutral-500">Durée finale : {secondsToTime(getRangeValues()[1] - getRangeValues()[0])}</div>
+                        <div className="text-center mt-2 text-[10px] text-muted">Durée finale : {secondsToTime(getRangeValues()[1] - getRangeValues()[0])}</div>
                       </div>
                     </motion.div>
                   )}
@@ -409,20 +409,20 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
 
             {/* Infos Uploader et Vues */}
             <div className="flex flex-wrap items-center gap-3 text-sm font-medium">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-800/50 border border-neutral-700/50 text-neutral-200">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/10 border border-border text-foreground">
                 {data.avatar && !imgError ? (
                   <img src={data.avatar} alt={data.uploader} className="w-5 h-5 rounded-full object-cover shadow-sm" onError={() => setImgError(true)} />
-                ) : (<User className="w-4 h-4 text-purple-400" />)}
+                ) : (<User className="w-4 h-4 text-accent" />)}
                 <span className="truncate max-w-[150px]">{data.uploader}</span>
               </div>
-              {data.views != null && (<div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-800/50 border border-neutral-700/50 text-neutral-400"><Eye className="w-4 h-4" /><span>{formatViews(data.views)} vues</span></div>)}
+              {data.views != null && (<div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/10 border border-border text-muted"><Eye className="w-4 h-4" /><span>{formatViews(data.views)} vues</span></div>)}
             </div>
           </div>
 
           {/* Boutons de téléchargement */}
           <div className="space-y-3">
             {/* AVERTISSEMENT DE TÉLÉCHARGEMENT */}
-            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-500/90 text-xs mb-1">
+            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-600 dark:text-yellow-500 text-xs mb-1">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <p>Le téléchargement peut prendre du temps selon votre connexion et la taille de la vidéo. Merci de patienter.</p>
             </div>
@@ -434,23 +434,59 @@ export default function VideoCard({ data, onReset }: VideoCardProps) {
                 const isAudio = fmt.ext === 'mp3' || fmt.label.toLowerCase().includes('audio');
 
                 return (
-                  <button key={i} onClick={() => handleDownload(fmt.id, fmt.label, i)} disabled={downloadingIndex !== null} className="group cursor-pointer relative overflow-hidden flex items-center justify-between p-3 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-neutral-600 hover:bg-neutral-800 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-wait">
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition duration-500" />
+                  <motion.button
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 + 0.2 }}
+                    key={i}
+                    onClick={() => handleDownload(fmt.id, fmt.label, i)}
+                    disabled={downloadingIndex !== null}
+                    className="group cursor-pointer relative overflow-hidden flex items-center justify-between p-3 rounded-xl bg-background/50 border border-border hover:border-muted hover:bg-card transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-wait"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition duration-500" />
                     <div className="flex items-center gap-4 relative z-10">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center border border-white/5 ${!isAudio ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center border border-border ${!isAudio ? 'bg-blue-500/10 text-blue-500' : 'bg-purple-500/20 text-purple-500'}`}>
                         {!isAudio ? <Video className="w-5 h-5" /> : <Music className="w-5 h-5" />}
                       </div>
                       <div className="text-left">
-                        <div className="text-white font-semibold text-sm flex items-center gap-2">{fmt.label} <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-700 text-neutral-300 font-mono">{fmt.ext.toUpperCase()}</span></div>
-                        <div className={`text-xs mt-0.5 transition-colors ${isTrimming ? "text-green-400 font-medium" : "text-neutral-500"}`}>{displaySize}</div>
+                        <div className="text-foreground font-semibold text-sm flex items-center gap-2">{fmt.label} <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/20 text-muted font-mono">{fmt.ext.toUpperCase()}</span></div>
+                        <div className={`text-xs mt-0.5 transition-colors ${isTrimming ? "text-green-500 font-medium" : "text-muted"}`}>{displaySize}</div>
                       </div>
                     </div>
-                    <div className="relative z-10 w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-colors">
-                      {downloadingIndex === i ? (<Loader2 className="w-4 h-4 animate-spin text-white" />) : (<Download className="w-4 h-4" />)}
+                    <div className="relative z-10 w-8 h-8 rounded-full bg-muted/20 flex items-center justify-center group-hover:bg-accent group-hover:text-white transition-colors">
+                      {downloadingIndex === i ? (<Loader2 className="w-4 h-4 animate-spin text-foreground" />) : (<Download className="w-4 h-4" />)}
                     </div>
-                  </button>
+                  </motion.button>
                 );
               })}
+
+              {/* Bouton pour créer un GIF */}
+              <motion.button
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.6 }}
+                onClick={() => handleDownload('gif', 'GIF Animé', 999)}
+                disabled={downloadingIndex !== null}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                className="group cursor-pointer relative overflow-hidden flex items-center justify-between p-3 rounded-xl bg-background/50 border border-border hover:border-green-500/50 hover:bg-card transition-all disabled:opacity-50 disabled:cursor-wait mt-4"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition duration-500" />
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center border border-border bg-green-500/10 text-green-500">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-foreground font-semibold text-sm flex items-center gap-2">Créer un GIF <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-600 dark:text-green-400 font-mono">NOUVEAU</span></div>
+                    <div className="text-xs mt-0.5 text-muted">Max 720p • Sans son</div>
+                  </div>
+                </div>
+                <div className="relative z-10 w-8 h-8 rounded-full bg-muted/20 flex items-center justify-center group-hover:bg-green-500 group-hover:text-white transition-colors">
+                  {downloadingIndex === 999 ? (<Loader2 className="w-4 h-4 animate-spin text-foreground" />) : (<Download className="w-4 h-4" />)}
+                </div>
+              </motion.button>
             </div>
           </div>
         </div>

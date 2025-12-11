@@ -5,11 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface PlaylistSidebarProps {
     entries: PlaylistItem[];
-    onSelectVideo: (url: string) => void;
     onBatchDownload: (selectedUrls: string[]) => void;
 }
 
-export default function PlaylistSidebar({ entries, onSelectVideo, onBatchDownload }: PlaylistSidebarProps) {
+export default function PlaylistSidebar({ entries, onBatchDownload }: PlaylistSidebarProps) {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
     const toggleSelection = (e: React.MouseEvent, id: string) => {
@@ -90,6 +89,7 @@ export default function PlaylistSidebar({ entries, onSelectVideo, onBatchDownloa
 
                             {/* Thumbnail */}
                             <div className="relative w-20 h-12 bg-black flex-shrink-0 rounded-md overflow-hidden">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover" />
                             </div>
 

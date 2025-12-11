@@ -7,22 +7,22 @@ import { Zap, ShieldCheck, Video, Music } from "lucide-react";
 
 const features = [
   {
-    icon: <Zap className="text-white w-8 h-8" />,
+    icon: <Zap className="w-8 h-8 text-accent" />,
     title: "Vitesse Éclair",
     desc: "Moteur de conversion optimisé pour des téléchargements instantanés.",
   },
   {
-    icon: <Video className="text-white w-8 h-8" />,
+    icon: <Video className="w-8 h-8 text-accent" />,
     title: "Qualité 4K",
     desc: "Support natif jusqu'à 2160p (4K). Qualité cristalline.",
   },
   {
-    icon: <Music className="text-white w-8 h-8" />,
+    icon: <Music className="w-8 h-8 text-accent" />,
     title: "Extraction Pure",
     desc: "Conversion MP3 320kbps avec métadonnées automatiques.",
   },
   {
-    icon: <ShieldCheck className="text-white w-8 h-8" />,
+    icon: <ShieldCheck className="w-8 h-8 text-accent" />,
     title: "Zéro Trace",
     desc: "Sécurité totale. Aucun log, aucune publicité, 100% privé.",
   },
@@ -34,8 +34,8 @@ export default function Features() {
 
       {/* Titre de section */}
       <div className="text-center mb-12">
-        <h2 className="text-3xl font-bold text-white mb-4">Pourquoi nous choisir ?</h2>
-        <p className="text-neutral-400">Une technologie de pointe au service de vos contenus.</p>
+        <h2 className="text-3xl font-bold text-foreground mb-4">Pourquoi nous choisir ?</h2>
+        <p className="text-muted">Une technologie de pointe au service de vos contenus.</p>
       </div>
 
       {/* Grille de Glare Cards */}
@@ -50,15 +50,15 @@ export default function Features() {
             <GlareCard className="flex flex-col items-center justify-center p-6 text-center">
 
               {/* Contenu à l'intérieur de la carte */}
-              <div className="w-14 h-14 rounded-full bg-neutral-800/80 flex items-center justify-center mb-4 shadow-lg shadow-purple-500/20 backdrop-blur-sm">
-                {item.icon}
+              <div className="w-14 h-14 rounded-full bg-card/80 flex items-center justify-center mb-4 shadow-lg shadow-accent/20 backdrop-blur-sm border border-border">
+                <div className="text-foreground">{item.icon}</div>
               </div>
 
-              <h3 className="text-xl font-bold text-white mb-2 tracking-wide">
+              <h3 className="text-xl font-bold text-foreground mb-2 tracking-wide">
                 {item.title}
               </h3>
 
-              <p className="text-neutral-400 text-sm leading-relaxed pb-2">
+              <p className="text-muted text-sm leading-relaxed pb-2">
                 {item.desc}
               </p>
 

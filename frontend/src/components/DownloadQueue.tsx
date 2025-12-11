@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Check, X, Loader2 } from "lucide-react";
+import { Check, X, Loader2 } from "lucide-react";
 
 export interface QueueItem {
     id: string;
@@ -42,11 +42,23 @@ export default function DownloadQueue({ items, onClear, withSidebar = false }: D
                                         <Loader2 className="w-5 h-5 text-purple-400 animate-spin relative z-10" />
                                     </div>
                                 ) : item.status === 'finished' ? (
-                                    <div className="w-6 h-6 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center flex-shrink-0 border border-green-500/30">
+                                    <motion.div
+                                        initial={{ scale: 0, rotate: -90 }}
+                                        animate={{ scale: 1, rotate: 0 }}
+                                        transition={{ type: "spring" }}
+                                        className="w-6 h-6 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center flex-shrink-0 border border-green-500/30"
+                                    >
                                         <Check className="w-3.5 h-3.5" />
-                                    </div>
+                                    </motion.div>
                                 ) : (
-                                    <X className="w-5 h-5 text-red-500 flex-shrink-0" />
+                                    <motion.div
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        className="relative"
+                                    >
+                                        <X className="w-5 h-5 text-red-500 flex-shrink-0 relative z-10" />
+                                        <div className="absolute inset-0 bg-red-500/20 blur-md rounded-full"></div>
+                                    </motion.div>
                                 )}
                                 <div className="flex flex-col min-w-0 justify-center gap-0.5 items-start text-left">
                                     <span className="text-sm font-bold text-white truncate leading-tight">{item.title || "Démarrage..."}</span>
