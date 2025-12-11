@@ -116,15 +116,23 @@ C'est l'outil magique qui permet de coller l'audio et la vidéo ensemble pour av
   ```bash
   sudo apt install ffmpeg
   ```
-- **Windows** : C'est un peu plus manuel.
-  1. Télécharge le fichier `.zip` ici : [FFmpeg Builds](https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z).
-  2. Extrais le dossier (tu auras besoin de 7-Zip ou WinRAR).
-  3. Renomme le dossier extrait en `ffmpeg` et déplace-le dans ton disque `C:\` (pour avoir `C:\ffmpeg`).
-  4. Ouvre le menu Démarrer, tape "Variables d'environnement" et ouvre l'option.
-  5. Dans "Variables système", trouve la ligne `Path` et clique sur "Modifier".
-  6. Clique sur "Nouveau" et colle : `C:\ffmpeg\bin`.
-  7. Valide tout en cliquant sur OK.
-  8. Vérifie en ouvrant un CMD et en tapant `ffmpeg -version`. Si ça affiche du texte, c'est gagné !
+- **Windows** : C'est un peu plus manuel :
+
+  1 -  Télécharge le fichier `.zip` ici : [FFmpeg Builds](https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z).
+  
+  2 - Extrais le dossier (tu auras besoin de 7-Zip ou WinRAR).
+  
+  3 - Renomme le dossier extrait en `ffmpeg` et déplace-le dans ton disque `C:\` (pour avoir `C:\ffmpeg`).
+  
+  4 - Ouvre le menu Démarrer, tape "Variables d'environnement" et ouvre l'option.
+  
+  5 - Dans "Variables système", trouve la ligne `Path` et clique sur "Modifier".
+  
+  6 - Clique sur "Nouveau" et colle : `C:\ffmpeg\bin`.
+  
+  7 - Valide tout en cliquant sur OK.
+
+  8 - Vérifie en ouvrant un CMD et en tapant `ffmpeg -version`. Si ça affiche du texte, c'est gagné !
 
 ---
 
